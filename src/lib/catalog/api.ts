@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 import { requireSessionPermission, jsonError } from '@/lib/api/guard'
 import { logError } from '@/lib/errors'
 import type { AppPermission } from '@/types/database'
@@ -8,8 +9,11 @@ import type { AppPermission } from '@/types/database'
  * Shared helpers for Phase 2 admin API routes.
  *
  * Write path: guard permission with the CALLER's session (database-side),
- * then mutate via the service-role client (server-only). Reads happen
- * client-side through RLS-scoped queries.
+ * then mutate through the caller's session client as well — RLS re-checks
+ * the permission inside the database (defense in depth) and the audit
+ * triggers can attribute auth.uid() correctly. The service-role client is
+ * reserved for compensation/cleanup paths that have no RLS policy.
+ * Reads happen client-side through RLS-scoped queries.
  */
 
 /** Parse a JSON body, returning null (with a 400 response) on failure. */
@@ -113,6 +117,7 @@ export interface AttributeUpdateConfig {
 }
 
 type AdminClient = ReturnType<typeof createAdminClient>
+type SessionClient = Awaited<ReturnType<typeof createClient>>
 
 /** Minimal structural types for a single-row mutation chain (the full
  *  supabase-js generic surface fights table-union call sites; the fields
@@ -130,21 +135,21 @@ interface UpdateBuilder {
 
 /** Generic single-row insert. */
 async function insertOne(
-  admin: AdminClient,
+  client: AdminClient | SessionClient,
   table: string,
   record: Record<string, unknown>
 ): Promise<SingleResult> {
-  return (admin.from(table) as unknown as InsertBuilder).insert(record).select().single()
+  return ((client as AdminClient).from(table) as unknown as InsertBuilder).insert(record).select().single()
 }
 
 /** Generic single-row update by id. */
 async function updateOne(
-  admin: AdminClient,
+  client: AdminClient | SessionClient,
   table: string,
   id: string,
   record: Record<string, unknown>
 ): Promise<SingleResult> {
-  return (admin.from(table) as unknown as UpdateBuilder).update(record).eq('id', id).select().single()
+  return ((client as AdminClient).from(table) as unknown as UpdateBuilder).update(record).eq('id', id).select().single()
 }
 
 export function createAttributePostHandler(config: AttributeCreateConfig) {
@@ -160,8 +165,10 @@ export function createAttributePostHandler(config: AttributeCreateConfig) {
       if (field in body) record[field] = body[field]
     }
 
-    const admin = createAdminClient()
-    const { data, error: insertError } = await insertOne(admin, config.table, record)
+    // Write through the CALLER's session so RLS re-checks the permission and
+    // the audit triggers can attribute auth.uid().
+    const session = await createClient()
+    const { data, error: insertError } = await insertOne(session, config.table, record)
 
     if (insertError) {
       logError(`api/${config.table}:create`, insertError)
@@ -189,8 +196,10 @@ export function createAttributePatchHandler(config: AttributeUpdateConfig) {
       return jsonError('Nothing to update.', 400)
     }
 
-    const admin = createAdminClient()
-    const { data, error: updateError } = await updateOne(admin, config.table, id, record)
+    // Write through the CALLER's session so RLS re-checks the permission and
+    // the audit triggers can attribute auth.uid().
+    const session = await createClient()
+    const { data, error: updateError } = await updateOne(session, config.table, id, record)
 
     if (updateError) {
       logError(`api/${config.table}:update`, updateError)

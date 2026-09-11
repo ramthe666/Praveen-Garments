@@ -32,9 +32,14 @@ Open the Supabase dashboard → **SQL Editor** → new query, then run each file
 | 4 | `supabase/migrations/0004_products_catalog.sql` | categories, brands, sizes, colors, products, variants, SKU/barcode/QR generators, catalog RLS |
 | 5 | `supabase/migrations/0005_inventory_stock.sql` | stock locations, balances, movement ledger, **atomic stock engine RPCs**, inventory RLS |
 | 6 | `supabase/migrations/0006_product_images_storage.sql` | `product-images` storage bucket + policies |
+| 7 | `supabase/migrations/0007_audit_email_attribution.sql` | catalog audit trigger now also records `user_email` (polish — run after Phase 2) |
 
 All migrations are idempotent and non-destructive (new objects only — they
 never alter or drop earlier schema). Details: `supabase/migrations/README.md`.
+
+> `supabase/purge-phase2-test-data.sql` (NOT a migration — do not run unless
+> you want to) removes the "P2TEST" rows created by the automated verification
+> rounds by temporarily lifting the append-only ledger guards.
 
 ### 2. Recommended Supabase dashboard settings
 

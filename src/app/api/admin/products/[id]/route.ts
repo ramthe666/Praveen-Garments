@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 import { requireSessionPermission, jsonError } from '@/lib/api/guard'
 import { logError } from '@/lib/errors'
 import { mutationErrorMessage, readJson } from '@/lib/catalog/api'
@@ -74,7 +75,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (!brand) return jsonError('Selected brand was not found.', 422)
   }
 
-  const { data, error: updateError } = await admin
+  // Update through the CALLER's session client so RLS re-checks
+  // manage_products inside the database and the audit trigger attributes
+  // auth.uid() (service-role writes would leave the audit user null).
+  const session = await createClient()
+  const { data, error: updateError } = await session
     .from('products')
     .update(input)
     .eq('id', id)

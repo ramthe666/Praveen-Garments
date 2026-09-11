@@ -99,3 +99,26 @@ Stage Summary:
 - Clean single-commit repo live at https://github.com/ramthe666/Praveen-Garments (193 files, 25,876 insertions)
 - No secrets, no binaries, no workspace artifacts on the remote
 - Future pushes: git add/commit on main, then push with a tokenized URL (or configure a credential helper)
+
+---
+Task ID: 5
+Agent: main (Super Z)
+Task: Phase 2 post-migration verification — user applied 0004/0005/0006; run the full DB-backed test round and finish Phase 2 (NO Phase 3)
+
+Work Log:
+- Sandbox had been recycled: .env reset to scaffold default, .next wiped, background server dead → recovered .env (incl. service key) from dangling local git objects (never pushed; remote stayed clean), clean-rebuilt the standalone production server
+- DB probe (scripts/phase2-db-probe.ts): all 9 Phase 2 tables + RPCs + seeds (8 sizes, 14 colors, MAIN) + product-images bucket (public, 2MB, PNG/JPEG/WebP) confirmed LIVE
+- Round 1 (scripts/phase2-api-tests.ts, 70 checks): catalog CRUD, duplicate SKU/barcode/QR rejections (DB messages surfaced), EAN-13 checksums + 20-24 prefix, QR ids, variant matrix, compensation on failed create, products_page search/filters, locations, opening-once, adjustments, reason-required, INSUFFICIENT_STOCK, transfers, 8-way concurrent double-sell (exactly 3 succeed, final balance exactly 5), ledger chain 50→60→55→35→25→15→5, scanner by SKU/barcode/QR, storage upload/serve/delete, audit trail — 52 passed; 18 analyzed
+- Analysis: 12 were wrong test expectations (barcode auto-gen default, price fallback at read, scanner shape, 415/413 codes, anon denial codes, CDN cache on deleted image URL); 1 stale-manager re-run password; REAL findings: (a) catalog audit rows had user_id NULL because routes wrote via service-role client, (b) audit trigger never recorded user_email, (c) users with movements cannot be deleted (ledger guard blocks auth.users ON DELETE SET NULL → UPDATE) — intended integrity, handled by deactivation + purge snippet
+- App fix: products create/update + shared attribute handlers now write through the CALLER's session client (RLS re-checks permission in-DB + audit triggers attribute auth.uid()); compensation delete stays service-role. Verified live: product_created/updated/price_changed/settings_changed rows now carry user_id (4/4)
+- Migration 0007_audit_email_attribution.sql (NEW, user-applied, idempotent): audit_catalog_change() now also records user_email from profiles — matches the stock engine pattern
+- Round 2 (scripts/phase2-api-tests-round2.ts, 29/29 PASSED): manager-role matrix (403 on product/category writes, CAN manage stock, view_inventory reads), RLS anon leaks zero rows, storage object removal verified via admin API + cache-busted URL, scanner + price fallback, ledger integrity preserved
+- Turbopack build-cache pitfall found: an incremental build silently reused PRE-EDIT route chunks (stale audit attribution) → fixed with rm -rf .next full rebuild; standalone server process title is "next-server" (pkill pattern corrected)
+- Browser round (live data): products list, product detail (5 variants, SKU/EAN/QR, stock-by-location Main 5 / Warehouse 20, price fallback ₹959), inventory current+history tabs (Low Stock status), labels, attributes (Categories 5 / Brands 1 / Sizes 9 / Colors 15) — 0 console errors, 0 page errors, 390px no-overflow; screenshots download/screenshots/p2live-*.png
+- Cleanup: both test users deactivated (profiles.is_active=false; hard delete impossible by ledger design); supabase/purge-phase2-test-data.sql (+ copy in download/) removes all P2TEST rows by temporarily lifting the append-only guards
+- tsc clean (src/), eslint clean on changed files, production build passes
+
+Stage Summary:
+- Phase 2 VERIFIED END-TO-END against the live cloud DB: 70 + 29 checks, all real behaviors green
+- Deliverables: audit-attribution app fix, migration 0007 (awaiting user application for user_email on catalog audit rows), purge snippet, 5 reusable test scripts, 7 live screenshots
+- Phase 3 (POS/billing) intentionally NOT started per user instruction

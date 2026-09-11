@@ -1,0 +1,81 @@
+{
+  "mgrUserId": null,
+  "catId": "a583342f-4a06-4461-a9e0-bc0748f1a418",
+  "subId": "7f0d6762-62b3-431c-a494-5e2247d457e8",
+  "brandId": "87815fdb-da9c-4141-8b9c-8c10be8c51cf",
+  "sizeId": "1df88631-a081-4865-a3e8-9cc564de5db1",
+  "colorId": "b60c52bb-4764-4847-b332-817459ed8851",
+  "productId": "09f90fd4-5d62-4680-88f3-d1cc7740b004",
+  "variants": [
+    {
+      "id": "c1b7f9e9-ea4a-42a7-8ab0-d0fd70eeae71",
+      "sku": "P2TEST-SKU-001",
+      "barcode": "2000000000015",
+      "size_id": "1df88631-a081-4865-a3e8-9cc564de5db1",
+      "color_id": "b60c52bb-4764-4847-b332-817459ed8851",
+      "qr_identifier": "QR0000000001"
+    },
+    {
+      "id": "a4f22c27-5c13-4339-9526-de13f8060d05",
+      "sku": "P2TEST-SKU-002",
+      "barcode": "2000000000022",
+      "size_id": null,
+      "color_id": null,
+      "qr_identifier": "QR0000000002"
+    },
+    {
+      "id": "1a4d836b-c213-43e0-8287-6be889be50ec",
+      "sku": "P2T-SHIRT-VAR",
+      "barcode": "2000000000039",
+      "size_id": null,
+      "color_id": null,
+      "qr_identifier": "QR0000000003"
+    },
+    {
+      "id": "ac947286-0f14-44f3-a9f9-4491d98e4880",
+      "sku": "P2T-SHIRT-VAR-2",
+      "barcode": "2000000000046",
+      "size_id": null,
+      "color_id": null,
+      "qr_identifier": "QR0000000004"
+    }
+  ],
+  "v1": {
+    "id": "c1b7f9e9-ea4a-42a7-8ab0-d0fd70eeae71",
+    "sku": "P2TEST-SKU-001",
+    "barcode": "2000000000015",
+    "size_id": "1df88631-a081-4865-a3e8-9cc564de5db1",
+    "color_id": "b60c52bb-4764-4847-b332-817459ed8851",
+    "qr_identifier": "QR0000000001"
+  },
+  "v2": {
+    "id": "a4f22c27-5c13-4339-9526-de13f8060d05",
+    "sku": "P2TEST-SKU-002",
+    "barcode": "2000000000022",
+    "size_id": null,
+    "color_id": null,
+    "qr_identifier": "QR0000000002"
+  },
+  "v5": {
+    "id": "827cb1a1-f854-4073-b11a-387dc4cf2d43",
+    "sku": "P2TEST-SKU-005",
+    "barcode": "2000000000060",
+    "size_id": null,
+    "color_id": null,
+    "qr_identifier": "QR0000000005"
+  },
+  "mainLoc": {
+    "id": "1786b200-9df9-405f-abb9-5c9d687e2a3a",
+    "code": "MAIN",
+    "name": "Main Store"
+  },
+  "whLoc": "25d0d4d1-b1ef-485f-a6a3-2f277f4ad0cb",
+  "imageUrl": "https://vrbtgvglbmzdtdutbbpc.supabase.co/storage/v1/object/public/product-images/products/09f90fd4-5d62-4680-88f3-d1cc7740b004/a70edc5d-82c6-471d-a810-119115a46f47.png",
+  "signedInAt": "2026-09-11T12:08:43.730Z",
+  "auditProductId": "766e108f-988a-420d-a199-b26ba8588a84",
+  "round2": {
+    "passed": 29,
+    "failed": 0,
+    "at": "2026-09-11T12:23:45.470Z"
+  }
+}

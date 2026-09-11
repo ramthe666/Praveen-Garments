@@ -77,6 +77,10 @@ export async function POST(request: NextRequest) {
   const input = parsed.data
 
   const admin = createAdminClient()
+  // The product row is inserted WITH THE USER's session client so RLS
+  // re-checks manage_products inside the database and the audit trigger can
+  // attribute auth.uid() (service-role writes would leave user_id null).
+  const userClient = await createClient()
 
   // Validate category / subcategory / brand references server-side
   const { data: category } = await admin.from('categories').select('id, parent_id').eq('id', input.category_id).maybeSingle()
@@ -92,7 +96,7 @@ export async function POST(request: NextRequest) {
     if (!brand) return jsonError('Selected brand was not found.', 422)
   }
 
-  const { data: product, error: productError } = await admin
+  const { data: product, error: productError } = await userClient
     .from('products')
     .insert({
       name: input.name,
@@ -124,7 +128,6 @@ export async function POST(request: NextRequest) {
   // Variant batch (if provided) via the RPC with the CALLER's session — the
   // database re-checks manage_products and all uniqueness constraints.
   if (input.variants.length > 0) {
-    const userClient = await createClient()
     const { data: variantResult, error: variantError } = await userClient.rpc('create_product_variants', {
       p_product_id: product.id,
       p_variants: input.variants,
