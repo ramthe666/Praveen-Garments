@@ -76,3 +76,26 @@ Stage Summary:
 - BLOCKED ON USER: apply 0004 → 0005 → 0006 in Supabase SQL Editor (idempotent, non-destructive, new objects only)
 - After application: full DB-backed test round (products CRUD, duplicates, barcode/QR, opening/adjust/transfer, insufficient stock, concurrency, storage, RLS) — then 16-item final report
 - Standalone production server left running on :3000 (memory-stable); dev mode available via `bun run dev` after killing it
+
+---
+Task ID: 4
+Agent: main (Super Z)
+Task: Push all code to GitHub repo ramthe666/Praveen-Garments (public)
+
+Work Log:
+- Inspected existing git state: 4 automated scaffold commits tracked 1,552 files including 1,316 pgtest/data binary Postgres files + tool-results/download/scaffold junk — unsuitable for push
+- SECURITY (repo is PUBLIC): verified .env (service role key) gitignored and never staged; scanned all staged content for secret VALUES (service key, ghp_ token, test password) — zero matches
+- Redacted hardcoded test password in scripts/create-test-user.ts → env-var or random-generated + printed (was Phase1!Test2026)
+- Parameterized hardcoded Supabase project URL in 3 scripts → process.env.NEXT_PUBLIC_SUPABASE_URL; genericized migrations README
+- Updated .gitignore: pgtest/data/, pgtest/log/, tool-results/, download/, upload/, db/, .agent/, .serena/, .zscripts/, mini-services/, examples/, prisma/, Caddyfile + !.env.example exception
+- Created .env.example documenting the 3 required env vars with placeholders
+- Rewrote README.md: Phase 1 + 2 scope, 6-migration table, engine design notes, security model, phase boundary
+- Rebuilt clean history via orphan branch: 193 source files (src 160, supabase 7, scripts 5, pgtest harness 7, configs, README, worklog, .gitignore, .env.example)
+- Pushed with one-off tokenized URL (token NOT stored in .git/config or any file): force-updated main → ced42dc
+- Verified via API: remote HEAD = ced42dc, root contents clean, .env returns 404 Not Found, pgtest contains only scripts (no data dir)
+- Set origin remote (clean URL) + upstream tracking: main → origin/main
+
+Stage Summary:
+- Clean single-commit repo live at https://github.com/ramthe666/Praveen-Garments (193 files, 25,876 insertions)
+- No secrets, no binaries, no workspace artifacts on the remote
+- Future pushes: git add/commit on main, then push with a tokenized URL (or configure a credential helper)
