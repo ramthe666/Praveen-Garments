@@ -1,0 +1,12 @@
+{
+  "name": "pgtest",
+  "private": true,
+  "dependencies": {
+    "@embedded-postgres/linux-x64": "^18.4.0-beta.17",
+    "embedded-postgres": "^18.4.0-beta.17",
+    "pg": "^8.23.0"
+  },
+  "trustedDependencies": [
+    "@embedded-postgres/linux-x64"
+  ]
+}
