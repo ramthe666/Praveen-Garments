@@ -226,6 +226,7 @@ export function InvoiceDocument({
                 <th className="px-2 py-1.5 font-semibold">Item</th>
                 <th className="px-2 py-1.5 font-semibold">HSN</th>
                 <th className="px-2 py-1.5 text-right font-semibold">Qty</th>
+                <th className="px-2 py-1.5 text-right font-semibold">MRP</th>
                 <th className="px-2 py-1.5 text-right font-semibold">Price</th>
                 <th className="px-2 py-1.5 text-right font-semibold">Discount</th>
                 <th className="px-2 py-1.5 text-right font-semibold">Taxable</th>
@@ -249,6 +250,9 @@ export function InvoiceDocument({
                     </td>
                     <td className="px-2 py-1.5 text-neutral-700">{item.hsn_code ?? '—'}</td>
                     <td className="px-2 py-1.5 text-right tabular-nums">{item.quantity}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums text-neutral-700">
+                      {item.mrp != null ? formatMoney(Number(item.mrp)) : '—'}
+                    </td>
                     <td className="px-2 py-1.5 text-right tabular-nums">{formatMoney(Number(item.unit_price))}</td>
                     <td className="px-2 py-1.5 text-right tabular-nums text-neutral-700">
                       {Number(item.discount_amount) > 0 ? `− ${formatMoney(Number(item.discount_amount))}` : '—'}

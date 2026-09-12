@@ -272,6 +272,7 @@ export function PosView() {
       const v = value.trim()
       if (!v) return
       setScanning(true)
+      let fallbackToSearch = false
       try {
         // Resolve scans through pos_search: it matches barcode / QR / SKU /
         // product code (exact matches sort first) and returns the FULL POS row
@@ -289,6 +290,23 @@ export function PosView() {
           toast.error('Not found', { description: `No product matches "${v}".` })
           return
         }
+        // Phase 6 hardening: scanners (or fast fingers) can send a PARTIAL
+        // code that fuzzy-matches an unrelated product. Only an exact
+        // VARIANT-level identifier (barcode / QR / SKU) may auto-add to the
+        // cart — product codes, names and partial strings fall back to the
+        // search results so the cashier consciously picks the item.
+        const isExactIdentifier =
+          found.barcode === v ||
+          found.qr_identifier === v ||
+          found.sku.toLowerCase() === v.toLowerCase()
+        if (!isExactIdentifier) {
+          fallbackToSearch = true
+          setSearchValue(v)
+          toast.info('Not an exact code', {
+            description: `Showing search results for “${v}” — pick the item to add it.`,
+          })
+          return
+        }
         addToCart(found)
       } catch (err) {
         logError('pos:scan', err)
@@ -296,7 +314,7 @@ export function PosView() {
       } finally {
         setScanning(false)
         setScanValue('')
-        scanRef.current?.focus()
+        ;(fallbackToSearch ? searchRef : scanRef).current?.focus()
       }
     },
     [supabase, addToCart]

@@ -63,10 +63,8 @@ const SECTION_FIELDS: Partial<Record<TabId, { settingsKey: AppSettingsKey; title
   invoice: {
     settingsKey: 'invoice',
     title: 'Invoice preferences',
-    description: 'Defaults applied to generated invoices and bills.',
+    description: 'Defaults applied to generated invoices and bills. The invoice number prefix itself lives in the Company tab.',
     fields: [
-      { kind: 'text', key: 'prefix', label: 'Invoice prefix', placeholder: 'INV', maxLength: 12, required: true },
-      { kind: 'number', key: 'next_number', label: 'Next invoice number', min: 1, max: 9999999 },
       { kind: 'toggle', key: 'show_logo', label: 'Show company logo on invoices', description: 'Prints the uploaded logo on every invoice.' },
       { kind: 'textarea', key: 'default_terms', label: 'Default terms & conditions', rows: 4, maxLength: 1000 },
       { kind: 'textarea', key: 'footer_note', label: 'Invoice footer note', rows: 2, maxLength: 300 },
@@ -93,7 +91,6 @@ const SECTION_FIELDS: Partial<Record<TabId, { settingsKey: AppSettingsKey; title
         { value: 'Card', label: 'Card' },
         { value: 'Bank Transfer', label: 'Bank Transfer' },
       ] },
-      { kind: 'textarea', key: 'bill_footer_note', label: 'Bill footer note', rows: 2, maxLength: 300 },
     ],
   },
   tax: {
@@ -103,52 +100,36 @@ const SECTION_FIELDS: Partial<Record<TabId, { settingsKey: AppSettingsKey; title
     fields: [
       { kind: 'toggle', key: 'enabled', label: 'Enable GST on invoices' },
       { kind: 'number', key: 'default_rate', label: 'Default GST rate (%)', min: 0, max: 28 },
-      { kind: 'text', key: 'intra_state_label', label: 'Intra-state label', placeholder: 'CGST + SGST', maxLength: 30 },
-      { kind: 'text', key: 'inter_state_label', label: 'Inter-state label', placeholder: 'IGST', maxLength: 30 },
     ],
   },
   inventory: {
     settingsKey: 'inventory',
     title: 'Inventory rules',
-    description: 'Stock thresholds and costing behaviour.',
+    description: 'Stock thresholds and over-sell protection. Valuation uses weighted-average cost.',
     fields: [
       { kind: 'number', key: 'low_stock_threshold', label: 'Low-stock threshold per item', min: 0, max: 100000 },
       { kind: 'toggle', key: 'allow_negative_stock', label: 'Allow negative stock', description: 'Permits billing even when stock is insufficient (recorded as negative).' },
-      { kind: 'select', key: 'costing_method', label: 'Costing method', options: [
-        { value: 'average', label: 'Weighted average' },
-        { value: 'fifo', label: 'FIFO' },
-      ] },
     ],
   },
   barcode: {
     settingsKey: 'barcode',
     title: 'Barcode',
-    description: 'Barcode generation and label printing.',
+    description: 'Barcode generation and label printing. Label barcodes pick EAN-13 / EAN-8 / CODE128 automatically from the code; the SKU is used when a variant has no barcode.',
     fields: [
-      { kind: 'select', key: 'format', label: 'Barcode format', options: [
-        { value: 'CODE128', label: 'CODE128 (recommended)' },
-        { value: 'EAN13', label: 'EAN-13' },
-        { value: 'CODE39', label: 'CODE39' },
-      ] },
       { kind: 'toggle', key: 'auto_generate', label: 'Auto-generate barcodes for new products' },
       { kind: 'select', key: 'print_size', label: 'Label print size (mm)', options: [
         { value: '50x25', label: '50 × 25' },
         { value: '38x25', label: '38 × 25' },
-        { value: '50x30', label: '50 × 30' },
+        { value: '100x50', label: '100 × 50' },
       ] },
     ],
   },
   qr: {
     settingsKey: 'qr',
     title: 'QR codes',
-    description: 'Product QR identifiers for quick lookup.',
+    description: 'Product QR identifiers for quick lookup. Labels size the QR from the label height automatically.',
     fields: [
       { kind: 'toggle', key: 'enabled', label: 'Generate QR codes for products' },
-      { kind: 'select', key: 'size', label: 'QR size', options: [
-        { value: 'small', label: 'Small' },
-        { value: 'medium', label: 'Medium' },
-        { value: 'large', label: 'Large' },
-      ] },
     ],
   },
   payments: {
@@ -167,8 +148,6 @@ const SECTION_FIELDS: Partial<Record<TabId, { settingsKey: AppSettingsKey; title
     fields: [
       { kind: 'toggle', key: 'enabled', label: 'Allow returns', description: 'Master switch for customer returns.' },
       { kind: 'number', key: 'window_days', label: 'Return window (days)', min: 0, max: 365, description: '0 disables the time limit.' },
-      { kind: 'toggle', key: 'require_invoice', label: 'Require the original bill for returns' },
-      { kind: 'toggle', key: 'restock_items', label: 'Restock returned items automatically' },
       { kind: 'toggle', key: 'exchange_enabled', label: 'Allow exchanges', description: 'Swap items against a completed bill with automatic price-difference settlement.' },
       { kind: 'toggle', key: 'refund_enabled', label: 'Allow cash/UPI refunds', description: 'When off, return values can still offset a due balance — money never leaves silently.' },
       { kind: 'toggle', key: 'damaged_to_location', label: 'Send damaged returns to the Damaged Goods location', description: 'Damaged items never re-enter sellable stock.' },

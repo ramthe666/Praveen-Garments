@@ -78,8 +78,10 @@ export function StockHistory({
       const { data, error: rpcError } = await supabase.rpc('stock_history_page', {
         p_after_created: cursor?.created_at ?? null,
         p_after_id: cursor?.id ?? null,
-        p_date_from: dateFrom ? new Date(`${dateFrom}T00:00:00`).toISOString() : null,
-        p_date_to: dateTo ? new Date(`${dateTo}T23:59:59`).toISOString() : null,
+        // Pin the day boundaries to the store timezone (IST) so filters mean
+        // the same thing on every device — mirrors the movements report.
+        p_date_from: dateFrom ? new Date(`${dateFrom}T00:00:00+05:30`).toISOString() : null,
+        p_date_to: dateTo ? new Date(`${dateTo}T23:59:59+05:30`).toISOString() : null,
         p_search: debouncedSearch || null,
         p_movement_type: movementType === 'all' ? null : movementType,
         p_location_id: location === 'all' ? null : location,

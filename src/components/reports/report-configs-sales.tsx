@@ -227,6 +227,7 @@ const paymentReport: SectionReportConfig = {
     const s = (data?.summary ?? {}) as Record<string, number>
     return [
       { label: 'Total inflow', value: money(s.total_inflow), tone: 'positive' },
+      { label: 'Exchanges in', value: money(s.total_exchange_in) },
       { label: 'Refunds out', value: money(s.total_refund), tone: 'destructive' },
       { label: 'Expenses', value: money(s.total_expense), tone: 'warning' },
       { label: 'Supplier payments', value: money(s.total_supplier) },
@@ -236,8 +237,8 @@ const paymentReport: SectionReportConfig = {
   sections: [
     {
       key: 'inflows',
-      title: 'Money received (till + receipts)',
-      description: 'Till payments at checkout plus customer receipts, per method. Receipt mirrors are never double-counted.',
+      title: 'Money received (till + receipts + exchanges)',
+      description: 'Till payments at checkout, customer receipts and exchange differences collected, per method. Receipt mirrors are never double-counted.',
       columns: [
         { key: 'method', header: 'Method' },
         { key: 'count', header: 'Transactions', align: 'right' },
@@ -254,6 +255,18 @@ const paymentReport: SectionReportConfig = {
           <td className="px-3 py-2 text-right tabular-nums">{pct(rows.reduce((s, r) => s + Number(r.pct ?? 0), 0))}</td>
         </tr>
       ),
+    },
+    {
+      key: 'exchange_collections',
+      title: 'Exchange differences collected',
+      description: 'Money customers paid on upgrade swaps (new item costlier than the returned one). Counted in the inflow above so the drawer reconciles.',
+      columns: [
+        { key: 'method', header: 'Method' },
+        { key: 'count', header: 'Exchanges', align: 'right' },
+        { key: 'amount', header: 'Amount', align: 'right', render: (r) => money(r.amount) },
+      ],
+      rows: (data) => ((data?.exchange_collections ?? []) as Row[]),
+      rowKey: (r) => String(r.method),
     },
     {
       key: 'refunds',

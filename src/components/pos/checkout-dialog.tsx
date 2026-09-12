@@ -72,7 +72,9 @@ export function CheckoutDialog({
   const [submitting, setSubmitting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
-  // reset the payment editor each time the dialog opens
+  // reset the payment editor each time the dialog opens, and whenever the
+  // grand total changes underneath it (defensive: keeps the default payment
+  // row in sync with the bill being settled)
   React.useEffect(() => {
     if (open) {
       const defaultMethod = config.pos.default_payment_method && methods.includes(config.pos.default_payment_method)
@@ -81,8 +83,8 @@ export function CheckoutDialog({
       setPayments([{ method: defaultMethod, amount: summary.grandTotal, reference: '', cash_received: null }])
       setError(null)
     }
-     
-  }, [open])
+
+  }, [open, summary.grandTotal])
 
   const paid = round2(
     payments

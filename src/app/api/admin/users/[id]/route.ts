@@ -175,6 +175,17 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
   const { error: deleteError } = await admin.auth.admin.deleteUser(id)
   if (deleteError) {
     logError('api/users/[id]:delete', deleteError)
+    // Users with stock-movement history cannot be hard-deleted: the
+    // user_id SET NULL cascade collides with the append-only ledger
+    // trigger. Deactivation preserves both the history and the audit trail.
+    const msg = String(deleteError.message ?? '')
+    if (msg.includes('append-only') || msg.includes('foreign key') || msg.includes('violates')) {
+      return jsonError(
+        'This account has transaction history (sales or stock movements) and cannot be deleted. ' +
+        'Disable the account instead — it keeps the history intact and revokes access immediately.',
+        409,
+      )
+    }
     return jsonError(toUserMessage(deleteError, 'Could not delete the account.'), 400)
   }
 

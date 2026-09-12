@@ -38,6 +38,19 @@ interface Selection {
   quantity: number
 }
 
+/** Shape returned by the identifier resolver / id lookup for preselection. */
+interface PreselectVariant {
+  variant_id: string
+  product_name: string
+  sku: string
+  barcode: string | null
+  qr_identifier: string | null
+  size_name: string | null
+  color_name: string | null
+  selling_price: number | null
+  mrp: number | null
+}
+
 /**
  * Barcode label printing. Pick variants (search the live stock database),
  * set per-variant quantities, choose a label template and print via the
@@ -64,26 +77,55 @@ export function LabelsView() {
   const [showSizeColor, setShowSizeColor] = React.useState(true)
   const [printing, setPrinting] = React.useState(false)
 
-  // preselect a variant via ?variant=<id> (deep link from product pages)
+  // preselect a variant via ?variant=<id> (deep link from product pages).
+  // Deep links carry the variant UUID; the identifier resolver only matches
+  // barcode/QR/SKU — try the resolver first, then fall back to a direct id
+  // lookup so product-page deep links actually preselect the variant.
   const preselect = searchParams.get('variant')
   React.useEffect(() => {
     if (!preselect || selections.some((s) => s.variant_id === preselect)) return
     let cancelled = false
-    supabase
-      .rpc('find_variant_by_identifier', { p_value: preselect })
-      .then(({ data, error }) => {
-        if (cancelled || error || !data) return
-        const v = data as {
-          variant_id: string
-          sku: string
-          barcode: string | null
-          qr_identifier: string | null
-          size_name: string | null
-          color_name: string | null
-          selling_price: number | null
-          mrp: number | null
-          product_name: string
-        }
+
+    const resolve = async () => {
+      const { data, error } = await supabase.rpc('find_variant_by_identifier', { p_value: preselect })
+      if (cancelled) return null
+      if (!error && data) return data as unknown as PreselectVariant
+      // not resolvable as an identifier — resolve as a variant id instead
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(preselect)) return null
+      const { data: row, error: idError } = await supabase
+        .from('product_variants')
+        .select('id, sku, barcode, qr_identifier, selling_price, mrp, products(name, mrp), sizes(name), colors(name)')
+        .eq('id', preselect)
+        .maybeSingle()
+      if (cancelled || idError || !row) return null
+      const r = row as unknown as {
+        id: string
+        sku: string
+        barcode: string | null
+        qr_identifier: string | null
+        selling_price: number | null
+        mrp: number | null
+        products: { name: string | null; mrp: number | null } | null
+        sizes: { name: string | null } | null
+        colors: { name: string | null } | null
+      }
+      return {
+        variant_id: r.id,
+        sku: r.sku,
+        barcode: r.barcode,
+        qr_identifier: r.qr_identifier,
+        size_name: r.sizes?.name ?? null,
+        color_name: r.colors?.name ?? null,
+        selling_price: r.selling_price,
+        mrp: r.mrp ?? r.products?.mrp ?? null,
+        product_name: r.products?.name ?? '',
+      } as PreselectVariant
+    }
+
+    // preselect is best-effort; manual search always works
+    resolve()
+      .then((v) => {
+        if (cancelled || !v) return
         setSelections((prev) =>
           prev.some((s) => s.variant_id === v.variant_id)
             ? prev
@@ -104,11 +146,11 @@ export function LabelsView() {
               ]
         )
       })
+      .catch(() => undefined)
     return () => {
       cancelled = true
     }
-     
-  }, [preselect])
+  }, [preselect, selections, supabase])
 
   // variant search (database-side, bounded)
   React.useEffect(() => {

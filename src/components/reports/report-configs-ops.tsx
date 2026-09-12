@@ -336,6 +336,7 @@ const cashReport: SectionReportConfig = {
     return [
       { label: 'Opening cash', value: money(d.opening_cash) },
       { label: 'Cash in', value: money(d.total_in), tone: 'positive' },
+      { label: 'Exchange collected', value: money(d.cash_exchange_in) },
       { label: 'Cash out', value: money(d.total_out), tone: 'destructive' },
       { label: 'Expected cash', value: money(d.expected_cash), tone: Number(d.expected_cash) >= 0 ? 'positive' : 'destructive' },
     ]
@@ -354,6 +355,7 @@ const cashReport: SectionReportConfig = {
           { label: 'Opening cash (ledger before the day)', amount: d.opening_cash },
           { label: 'Cash sales at the till', amount: d.cash_sales },
           { label: 'Cash customer receipts', amount: d.cash_receipts },
+          { label: 'Cash collected on exchanges', amount: d.cash_exchange_in },
           { label: 'Cash refunds (returns + exchanges)', amount: -Number(d.cash_refunds ?? 0) },
           { label: 'Cash expenses', amount: -Number(d.cash_expenses ?? 0) },
           { label: 'Cash supplier payments', amount: -Number(d.cash_supplier ?? 0) },
