@@ -64,20 +64,26 @@ const salesReport: TableReportConfig<Row> = {
       <BrandFilter value={draft.brand ?? ''} onChange={(v) => patch({ brand: v })} />
     </>
   ),
-  argsFromFilters: (from, to, f, page, sort) => ({
-    p_date_from: from || null,
-    p_date_to: to || null,
-    p_search: f.search?.trim() || null,
-    p_cashier_id: f.cashier || null,
-    p_category_id: f.category || null,
-    p_brand_id: f.brand || null,
-    p_payment_method: f.method || null,
-    p_status: f.status || 'COMPLETED',
-    p_payment_status: f.pstatus || null,
-    p_sort: sort || 'date_desc',
-    p_limit: 25,
-    p_offset: page * 25,
-  }),
+  argsFromFilters: (from, to, f, page, sort) => {
+    const args: Record<string, unknown> = {
+      p_date_from: from || null,
+      p_date_to: to || null,
+      p_search: f.search?.trim() || null,
+      p_cashier_id: f.cashier || null,
+      p_category_id: f.category || null,
+      p_brand_id: f.brand || null,
+      p_payment_method: f.method || null,
+      p_status: f.status || 'COMPLETED',
+      p_sort: sort || 'date_desc',
+      p_limit: 25,
+      p_offset: page * 25,
+    }
+    // p_payment_status only exists on sales_report once 0013 is applied —
+    // omit it while unfiltered so the page also loads on a 0012-only
+    // database (PostgREST rejects unknown named args with PGRST202).
+    if (f.pstatus) args.p_payment_status = f.pstatus
+    return args
+  },
   sortOptions: [
     { value: 'date_desc', label: 'Newest first' },
     { value: 'date_asc', label: 'Oldest first' },

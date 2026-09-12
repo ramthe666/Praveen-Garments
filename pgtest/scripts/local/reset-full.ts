@@ -20,6 +20,7 @@ const MIGRATIONS = [
   '../supabase/migrations/0010_phase4_active_filter_fix.sql',
   '../supabase/migrations/0011_phase4_statement_till_payments.sql',
   '../supabase/migrations/0012_phase5_reporting.sql',
+  '../supabase/migrations/0013_sales_report_payment_status.sql',
 ]
 
 const c = new Client(CONN)

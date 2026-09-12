@@ -161,3 +161,20 @@ Stage Summary:
 - Migration 0012 prepared, validated locally (116 checks + perf evidence), NOT yet applied to cloud (user must run it in Supabase SQL editor, same as 0011)
 - All existing migrations untouched; no tables/data changed; tsc src/ = 0 errors; eslint new files = clean
 - Pre-existing tsc errors in legacy scripts/ + pgtest harness remain (documented, predate Phase 5)
+
+---
+Task ID: 8
+Agent: main (Super Z)
+Task: User applied 0012 on cloud, reported an error on ONE page ("other things are working"); fix without touching existing migrations
+
+Work Log:
+- Read-only cloud checks: 0012 fully deployed (16 report RPCs live, all data correct, 0011 intact — 92/92 verification, 16/16 RPC smoke)
+- Reproduced in browser (temp admin user, agent-browser): the Sales report page fails with "Could not load this report" + a misleading "apply 0012" notice
+- Root cause: frontend sales view sends p_payment_status; 0012's 14-arg sales_report does not accept it → PostgREST PGRST202 → use-report hook misreads it as "migration not applied"
+- Fix: NEW migration 0013_sales_report_payment_status.sql (drop 14-arg version, recreate with p_payment_status PAID/PARTIALLY_PAID/DUE; body byte-identical to 0012 PART 4 otherwise); frontend now omits the arg while unfiltered (page loads even pre-0013); database.ts types updated
+- Validation: local chain 0001→0013 applies cleanly; test-0012 regression 116/116 PASS on the 0013 state; new test-0013 25/25 PASS (filter correctness, invalid-ignored, gate, grants, no overload); browser: /reports/sales renders real rows, zero console/page errors, all 17 pages clean; tsc src/ = 0 errors
+- Cloud test user pg-phase5-test@praveengarments.com created for the reproduction and DELETED after
+
+Stage Summary:
+- Sales report fixed; one user action remains: apply 0013_sales_report_payment_status.sql in the Supabase SQL editor (after 0012) to enable the payment-status filter — the page itself already works without it
+- 0001–0012 untouched (0013 generated from the 0012 file text; only additions)

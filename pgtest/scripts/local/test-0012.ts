@@ -617,8 +617,8 @@ async function main() {
 
     // grants: anon must NOT execute; authenticated must
     const g = await val(root, `select
-      has_function_privilege('anon', 'public.sales_report(date,date,text,uuid,uuid,text,uuid,uuid,uuid,uuid,text,text,integer,integer)', 'EXECUTE') as a,
-      has_function_privilege('authenticated', 'public.sales_report(date,date,text,uuid,uuid,text,uuid,uuid,uuid,uuid,text,text,integer,integer)', 'EXECUTE') as au,
+      has_function_privilege('anon', 'public.sales_report(date,date,text,uuid,uuid,text,uuid,uuid,uuid,uuid,text,text,integer,integer,text)', 'EXECUTE') as a,
+      has_function_privilege('authenticated', 'public.sales_report(date,date,text,uuid,uuid,text,uuid,uuid,uuid,uuid,text,text,integer,integer,text)', 'EXECUTE') as au,
       has_function_privilege('anon', 'public.audit_page(text,text,uuid,date,date,text,integer,integer)', 'EXECUTE') as aud_a,
       has_function_privilege('authenticated', 'public.audit_page(text,text,uuid,date,date,text,integer,integer)', 'EXECUTE') as aud_au,
       has_function_privilege('authenticated', 'public.variant_unit_costs()', 'EXECUTE') as costs_au,

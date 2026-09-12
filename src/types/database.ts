@@ -1023,6 +1023,7 @@ export type Database = {
           p_sort?: string | null
           p_limit?: number | null
           p_offset?: number | null
+          p_payment_status?: string | null
         }
         Returns: Json
       }
