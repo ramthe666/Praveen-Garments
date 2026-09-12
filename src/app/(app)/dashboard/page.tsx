@@ -4,8 +4,6 @@ import {
   AlertTriangle,
   ArrowRight,
   Boxes,
-  CheckCircle2,
-  Circle,
   Coins,
   IndianRupee,
   PackageX,
@@ -34,13 +32,6 @@ import { resolvePeriod, type PeriodPreset } from '@/lib/reports/period'
 export const metadata: Metadata = { title: 'Dashboard' }
 
 export const dynamic = 'force-dynamic'
-
-interface ChecklistItem {
-  label: string
-  done: boolean
-  href?: string
-  cta?: string
-}
 
 interface RecentSale {
   id: string
@@ -212,28 +203,6 @@ export default async function DashboardPage({
     }
   }
 
-  // ---- Setup checklist (unchanged behaviour) ------------------------------
-  let branchCount = 0
-  let staffCount: number | null = null
-  if (bootstrap.dbReady) {
-    const { count, error } = await supabase.from('branches').select('*', { count: 'exact', head: true })
-    if (error) {
-      if (!isTableMissing(error)) logError('dashboard:branches', error)
-    } else {
-      branchCount = count ?? 0
-    }
-    if (bootstrap.permissions.includes('manage_users')) {
-      const { count: usersCount, error: usersError } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-      if (usersError) {
-        if (!isTableMissing(usersError)) logError('dashboard:profiles', usersError)
-      } else {
-        staffCount = usersCount ?? 0
-      }
-    }
-  }
-
   const todayLabel = new Intl.DateTimeFormat('en-IN', {
     weekday: 'long',
     day: 'numeric',
@@ -256,33 +225,6 @@ export default async function DashboardPage({
       recentSales = (recent ?? []) as RecentSale[]
     }
   }
-
-  const checklist: ChecklistItem[] = [
-    { label: 'Apply the Phase 1 database migrations', done: bootstrap.dbReady },
-    {
-      label: 'Configure your company profile & logo',
-      done: Boolean(bootstrap.company && bootstrap.company.company_name && bootstrap.company.phone),
-      href: '/settings',
-      cta: 'Open settings',
-    },
-    {
-      label: 'Add your first branch / store',
-      done: branchCount > 0,
-      href: '/settings?tab=branches',
-      cta: 'Add branch',
-    },
-    ...(staffCount === null
-      ? []
-      : [
-          {
-            label: 'Create staff accounts with roles',
-            done: staffCount > 1,
-            href: '/users',
-            cta: 'Manage users',
-          },
-        ]),
-  ]
-  const completedCount = checklist.filter((c) => c.done).length
 
   const sales = summary?.sales ?? null
   const salesHint = sales === null ? 'Requires sales access' : sales.bills === 0 ? 'No bills in this period' : `${sales.bills} bill${sales.bills > 1 ? 's' : ''} · avg ${formatMoney(sales.avg_bill_value)}`
@@ -491,44 +433,6 @@ export default async function DashboardPage({
           </Card>
         </section>
       ) : null}
-
-      {/* ---- Getting started ---- */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Getting started</CardTitle>
-          <CardDescription>
-            Complete these steps to prepare {bootstrap.branding.companyName} for daily operations.
-            {completedCount > 0 ? ` ${completedCount} of ${checklist.length} done.` : ''}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-3">
-            {checklist.map((item) => (
-              <li key={item.label} className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                {item.done ? (
-                  <CheckCircle2 className="size-4.5 shrink-0 text-success" aria-hidden="true" />
-                ) : (
-                  <Circle className="size-4.5 shrink-0 text-muted-foreground/60" aria-hidden="true" />
-                )}
-                <span
-                  className={
-                    item.done
-                      ? 'min-w-0 flex-1 text-sm text-muted-foreground line-through decoration-muted-foreground/40'
-                      : 'min-w-0 flex-1 text-sm text-foreground'
-                  }
-                >
-                  {item.label}
-                </span>
-                {!item.done && item.href && item.cta ? (
-                  <Button asChild variant="link" size="sm" className="h-auto p-0 text-[13px]">
-                    <Link href={item.href}>{item.cta}</Link>
-                  </Button>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
     </div>
   )
 }

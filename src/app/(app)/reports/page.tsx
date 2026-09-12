@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { loadAppBootstrap } from '@/lib/data/app-data'
 import { NoPermission } from '@/components/shared/no-permission'
 import { PageHeader } from '@/components/shared/page-header'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { REPORTS, REPORT_GROUPS } from '@/lib/reports/registry'
 
 export const metadata: Metadata = { title: 'Reports' }
@@ -68,12 +68,6 @@ export default async function ReportsPage() {
             (like profit and COGS) say so on the report itself.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Requires the <span className="font-mono text-xs">0012_phase5_reporting</span> migration. If a report shows
-            a setup notice, apply the migration in the Supabase SQL editor and reload.
-          </p>
-        </CardContent>
       </Card>
     </div>
   )
