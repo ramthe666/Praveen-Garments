@@ -76,8 +76,15 @@ const SECTION_FIELDS: Partial<Record<TabId, { settingsKey: AppSettingsKey; title
     description: 'How the billing screen behaves during a sale.',
     fields: [
       { kind: 'toggle', key: 'require_customer', label: 'Require a customer on every bill', description: 'Cashier must attach or create a customer before checkout.' },
-      { kind: 'toggle', key: 'allow_price_edit', label: 'Allow item price editing at POS', description: 'Cashier can override the listed price (audited).' },
+      { kind: 'toggle', key: 'allow_price_edit', label: 'Allow item price editing at POS', description: 'Staff with the Override Sale Price permission can override the listed price (audited).' },
+      { kind: 'toggle', key: 'allow_credit_sales', label: 'Allow credit (due) sales', description: 'Bills can be completed with a balance due; requires a customer.' },
       { kind: 'toggle', key: 'round_off', label: 'Round off bill total', description: 'Rounds the payable amount to the nearest rupee.' },
+      { kind: 'select', key: 'default_tax_mode', label: 'Tax mode', options: [
+        { value: 'inclusive', label: 'GST included in prices (MRP-style)' },
+        { value: 'exclusive', label: 'GST added on top of prices' },
+      ] },
+      { kind: 'number', key: 'max_item_discount_pct', label: 'Max item discount (%)', min: 0, max: 100 },
+      { kind: 'number', key: 'max_bill_discount_pct', label: 'Max bill discount (%)', min: 0, max: 100 },
       { kind: 'select', key: 'default_payment_method', label: 'Default payment method', options: [
         { value: 'Cash', label: 'Cash' },
         { value: 'UPI', label: 'UPI' },
@@ -145,9 +152,9 @@ const SECTION_FIELDS: Partial<Record<TabId, { settingsKey: AppSettingsKey; title
   payments: {
     settingsKey: 'payments',
     title: 'Payment methods',
-    description: 'Methods available at checkout. Toggle the ones your store accepts.',
+    description: 'Methods available at checkout. Toggle the ones your store accepts. “Credit” records the balance due of a credit sale.',
     fields: [
-      { kind: 'chips', key: 'methods', label: 'Accepted methods', options: ['Cash', 'UPI', 'Card', 'Bank Transfer', 'Cheque', 'Store Credit'] },
+      { kind: 'chips', key: 'methods', label: 'Accepted methods', options: ['Cash', 'UPI', 'Card', 'Bank Transfer', 'Cheque', 'Store Credit', 'Credit', 'Other'] },
     ],
   },
   returns: {

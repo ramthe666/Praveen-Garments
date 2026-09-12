@@ -1,14 +1,40 @@
 import type { Metadata } from 'next'
-import { PageHeader } from '@/components/shared/page-header'
-import { ModuleComingSoon } from '@/components/shared/module-coming-soon'
+import { NoPermission } from '@/components/shared/no-permission'
+import { AppProvider } from '@/components/providers/app-provider'
+import { SalesView } from '@/components/sales/sales-view'
+import { createClient } from '@/lib/supabase/server'
+import { loadAppBootstrap } from '@/lib/data/app-data'
+import type { AppContextData } from '@/components/providers/app-provider'
 
 export const metadata: Metadata = { title: 'Sales' }
+export const dynamic = 'force-dynamic'
 
-export default function SalesPage() {
+export default async function SalesPage() {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const bootstrap = await loadAppBootstrap(user.id)
+  if (!bootstrap.permissions.includes('view_sales')) {
+    return <NoPermission moduleName="Sales" />
+  }
+
+  const contextData: AppContextData = {
+    userId: user.id,
+    userEmail: user.email ?? bootstrap.profile?.email ?? '',
+    profile: bootstrap.profile,
+    permissions: bootstrap.permissions,
+    companyName: bootstrap.branding.companyName,
+    logoUrl: bootstrap.branding.logoUrl,
+    settings: bootstrap.settings,
+    dbReady: bootstrap.dbReady,
+  }
+
   return (
-    <div className="space-y-6">
-      <PageHeader title="Sales" description="Foundation ready — module ships in a later phase." />
-      <ModuleComingSoon moduleName="Sales" description="Complete sales history with invoices, payment status, cancellations with reasons, and customer purchase tracking." />
-    </div>
+    <AppProvider data={contextData}>
+      <SalesView />
+    </AppProvider>
   )
 }

@@ -18,6 +18,7 @@ const patchSchema = z
     full_name: z.string().trim().min(1).max(120).optional(),
     phone: z.string().trim().max(20).nullable().optional(),
     branch_id: z.string().uuid().nullable().optional(),
+    pos_discount_limit_pct: z.number().min(0).max(100).nullable().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: 'Nothing to update.' })
 
@@ -92,6 +93,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (changes.full_name !== undefined) updates.full_name = changes.full_name
   if (changes.phone !== undefined) updates.phone = changes.phone ?? null
   if (changes.branch_id !== undefined) updates.branch_id = changes.branch_id ?? null
+  if (changes.pos_discount_limit_pct !== undefined) updates.pos_discount_limit_pct = changes.pos_discount_limit_pct
   if (changes.is_active !== undefined) updates.is_active = changes.is_active
 
   // Auth-level ban/unban must accompany the profile status change.
@@ -132,8 +134,18 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
   if (Object.keys(updates).length > 0) {
     await audit(admin, guard, 'user_updated', id, existing.email, {
-      oldValues: { full_name: existing.full_name, phone: existing.phone, branch_id: existing.branch_id },
-      newValues: { full_name: updated.full_name, phone: updated.phone, branch_id: updated.branch_id },
+      oldValues: {
+        full_name: existing.full_name,
+        phone: existing.phone,
+        branch_id: existing.branch_id,
+        pos_discount_limit_pct: existing.pos_discount_limit_pct ?? null,
+      },
+      newValues: {
+        full_name: updated.full_name,
+        phone: updated.phone,
+        branch_id: updated.branch_id,
+        pos_discount_limit_pct: updated.pos_discount_limit_pct ?? null,
+      },
     })
   }
 

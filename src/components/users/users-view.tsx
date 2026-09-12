@@ -113,6 +113,7 @@ type EditForm = {
   role: UserRole
   phone: string
   branch_id: string
+  pos_discount_limit_pct: string
 }
 
 export function UsersView({ currentUserId }: { currentUserId: string }) {
@@ -281,6 +282,10 @@ export function UsersView({ currentUserId }: { currentUserId: string }) {
           role: editForm.role,
           phone: editForm.phone.trim() || null,
           branch_id: editForm.branch_id || null,
+          pos_discount_limit_pct:
+            editForm.pos_discount_limit_pct.trim() === ''
+              ? null
+              : Math.min(100, Math.max(0, Number(editForm.pos_discount_limit_pct))),
         }),
       })
       const payload = (await res.json()) as { error?: string }
@@ -519,6 +524,7 @@ export function UsersView({ currentUserId }: { currentUserId: string }) {
                                   role: p.role,
                                   phone: p.phone ?? '',
                                   branch_id: p.branch_id ?? '',
+                                  pos_discount_limit_pct: p.pos_discount_limit_pct != null ? String(p.pos_discount_limit_pct) : '',
                                 })
                               }}
                               className="cursor-pointer"
@@ -777,6 +783,25 @@ export function UsersView({ currentUserId }: { currentUserId: string }) {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ed-pos-limit">POS discount limit (%)</Label>
+                <Input
+                  id="ed-pos-limit"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="0.01"
+                  inputMode="decimal"
+                  value={editForm.pos_discount_limit_pct}
+                  onChange={(e) => setEditForm((f) => (f ? { ...f, pos_discount_limit_pct: e.target.value } : f))}
+                  disabled={editBusy}
+                  placeholder="Role default (no personal limit)"
+                  aria-describedby="ed-pos-limit-help"
+                />
+                <p id="ed-pos-limit-help" className="text-xs text-muted-foreground">
+                  Caps this employee's discounts at the POS. Leave empty to use the role/store default. Admins are unlimited.
+                </p>
               </div>
               <DialogFooter className="gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={() => (setEditTarget(null), setEditForm(null))} disabled={editBusy}>

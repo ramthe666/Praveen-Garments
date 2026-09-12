@@ -209,3 +209,47 @@
     display: none !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Invoice printing (Sales → invoice)
+ * The invoice document prints alone (both A4 and 80mm thermal formats).
+ * The A4/thermal @page rule is injected by the invoice component itself;
+ * these rules keep the document ink-friendly on both formats.
+ * ------------------------------------------------------------------------- */
+@media print {
+  .invoice-print-area table {
+    page-break-inside: auto;
+  }
+
+  .invoice-print-area tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  .invoice-print-area thead {
+    display: table-header-group;
+  }
+
+  .invoice-print-area footer {
+    page-break-inside: avoid;
+  }
+
+  .invoice-print-area {
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* neutral header bands render as light grey on any printer */
+  .invoice-print-area thead tr {
+    background: #f2f2f2 !important;
+  }
+}
+
+/* Thermal preview keeps a paper-like width on screen */
+@media screen {
+  .invoice-print-area.font-mono {
+    background: white;
+    color: black;
+  }
+}

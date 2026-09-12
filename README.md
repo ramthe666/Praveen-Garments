@@ -3,10 +3,16 @@
 Private billing/POS + inventory workspace for a garment retail business.
 **Phase 1** (foundation): authentication, roles & permissions, app shell,
 dashboard, settings, users, audit logs — complete and browser-tested.
-**Phase 2** (this drop): product catalog with size/color variants, SKU /
+**Phase 2**: product catalog with size/color variants, SKU /
 barcode / QR identification, label printing, and a full inventory engine
 (stock balances, append-only movement ledger, locations, transfers,
 reorder levels) — complete and browser-tested.
+**Phase 3**: the real POS / billing system — scanner-first checkout,
+atomic sales with stock deduction, split payments, credit sales, GST
+(CGST/SGST/IGST, inclusive or exclusive), discounts with per-employee
+caps, held bills, invoices (A4 + 80 mm thermal), sales history and
+supervised cancellation — engine fully tested (104 database-level tests
+including the two-cashiers-one-item concurrency guarantee).
 
 **Not a public SaaS** — no signup, no tenant management. One business, one Admin.
 
@@ -33,6 +39,7 @@ Open the Supabase dashboard → **SQL Editor** → new query, then run each file
 | 5 | `supabase/migrations/0005_inventory_stock.sql` | stock locations, balances, movement ledger, **atomic stock engine RPCs**, inventory RLS |
 | 6 | `supabase/migrations/0006_product_images_storage.sql` | `product-images` storage bucket + policies |
 | 7 | `supabase/migrations/0007_audit_email_attribution.sql` | catalog audit trigger now also records `user_email` (polish — run after Phase 2) |
+| 8 | `supabase/migrations/0008_pos_billing.sql` | **Phase 3 POS/billing**: customers, sales/items/payments, held bills, invoice numbering, `create_sale()` atomic engine, `cancel_sale()`, POS search/config RPCs, sales history, RLS, new permissions (+ hotfix for the Phase 1 settings-audit trigger — see file header) |
 
 All migrations are idempotent and non-destructive (new objects only — they
 never alter or drop earlier schema). Details: `supabase/migrations/README.md`.
@@ -116,6 +123,51 @@ cd pgtest && bun install && bun run scripts/local/setup.ts
 bun run scripts/local/test-phase2.ts
 ```
 
+The Phase 3 billing engine has its own suite (`test-phase3.ts`) — 104
+database-level checks covering search, scanner resolve, atomic checkout,
+rollback integrity, price-override and discount permissions/limits, tax
+modes, split/credit payments, invoice numbering, held bills, cancellation,
+sales history filters, RLS and the two-cashiers-one-item concurrency
+guarantee:
+
+```
+cd pgtest && bun run scripts/local/test-phase3.ts
+```
+
+## Phase 3 — POS / billing design notes
+
+- **`create_sale()` is the only write path for sales** — one SECURITY
+  DEFINER transaction that re-validates everything server-side: caller
+  permission, variant/stock state, price-override gates (setting AND
+  permission), item/bill discounts against global caps and per-employee
+  limits, GST (inclusive/exclusive, CGST/SGST/IGST by supply state),
+  payment-method enablement, split-payment totals, credit rules (customer
+  required), then writes sale + snapshot items + payments, row-locks the
+  stock balances (`INSERT … ON CONFLICT DO UPDATE`), writes SALE ledger
+  movements, and records audit events. Any failure rolls back the entire
+  sale — a sale without stock or a payment without a sale is impossible.
+- **Concurrent-proof invoice numbers** — a `sale_number_counters` row per
+  prefix+year is incremented with the same row-locked upsert pattern;
+  numbers follow `{prefix}-{year}-{000000}` (prefix from Settings).
+- **Historical integrity** — sale items store name/SKU/size/colour/HSN/
+  price/tax snapshots; invoices never recompute from current product rows.
+- **Rounding** — one rule everywhere (PG `round(numeric, 2)`, half away
+  from zero); optional rupee round-off from POS settings. The client
+  mirrors the same math for display, but the server result is authoritative.
+- **Held bills never touch stock** — they are cashier-private cart
+  snapshots; resuming re-resolves variants so prices/stock are fresh.
+- **Cancellation is supervised and non-destructive** — permission +
+  reason required, stock restored via SALES_RETURN movements, the invoice
+  record is preserved with `status = CANCELLED`, and a full audit row is
+  written. Sales are never deleted.
+- **POS UX** — scanner-first input (USB/Bluetooth scanners behave like
+  keyboards), debounced database-side search, duplicate scans increment
+  quantity, keyboard shortcuts (F2 search · F4 customer · F8 checkout ·
+  Del remove row · Esc close), optional camera QR scanning where the
+  browser supports it (never required), cart recovery via sessionStorage
+  (never authoritative), and a post-sale screen that keeps the invoice
+  until the next sale starts.
+
 ## Architecture map
 
 ```
@@ -173,7 +225,8 @@ pgtest/                  local Postgres engine test harness
 
 ## Phase boundary
 
-Phase 3 (POS checkout, payments, invoices, billing, returns) is **not**
-started. The inventory engine is already POS-ready: `adjust_stock` is the
-single choke point a checkout will call, and `find_variant_by_identifier`
-resolves any scanned barcode/QR/SKU to a variant with live stock.
+Phase 4 (loyalty, promotions engine, complex accounting, advanced supplier
+workflows, full returns/exchanges) is **not** started. The POS engine is
+ready for it: `cancel_sale` and the SALES_RETURN movement type already
+model returns at the ledger level, and sale items keep the snapshots a
+returns module will need.

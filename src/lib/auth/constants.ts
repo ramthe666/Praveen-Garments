@@ -34,6 +34,9 @@ export const PERMISSION_LABELS: Record<AppPermission, string> = {
   manage_users: 'Manage Users',
   manage_settings: 'Manage Settings',
   view_audit_logs: 'View Audit Logs',
+  view_sales: 'View Sales',
+  override_sale_price: 'Override Sale Price',
+  apply_discount: 'Apply Discount',
 }
 
 export const ALL_PERMISSIONS: AppPermission[] = [
@@ -52,6 +55,9 @@ export const ALL_PERMISSIONS: AppPermission[] = [
   'manage_users',
   'manage_settings',
   'view_audit_logs',
+  'view_sales',
+  'override_sale_price',
+  'apply_discount',
 ]
 
 /** Fallback when company settings are unreachable (e.g. pre-migration). */

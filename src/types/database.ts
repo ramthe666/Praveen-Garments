@@ -30,6 +30,9 @@ export type AppPermission =
   | 'manage_users'
   | 'manage_settings'
   | 'view_audit_logs'
+  | 'view_sales'
+  | 'override_sale_price'
+  | 'apply_discount'
 
 export type AuditAction =
   | 'login'
@@ -57,6 +60,11 @@ export type AuditAction =
   | 'refund_issued'
   | 'purchase_created'
   | 'purchase_updated'
+  | 'price_override_applied'
+  | 'discount_applied'
+  | 'bill_held'
+  | 'bill_resumed'
+  | 'bill_discarded'
 
 export type Branch = {
   id: string
@@ -82,6 +90,7 @@ export type Profile = {
   branch_id: string | null
   is_active: boolean
   last_login_at: string | null
+  pos_discount_limit_pct: number | null
   created_at: string
   updated_at: string
 }
@@ -304,6 +313,118 @@ export type ProductsPageResult = {
   total_is_estimate: boolean
 }
 
+// ---------------------------------------------------------------------------
+// Phase 3 — POS / billing types (migration 0008)
+// ---------------------------------------------------------------------------
+
+export type Customer = {
+  id: string
+  name: string
+  phone: string | null
+  email: string | null
+  address: string | null
+  city: string | null
+  state: string | null
+  gstin: string | null
+  notes: string | null
+  is_active: boolean
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type SaleStatus = 'COMPLETED' | 'CANCELLED'
+export type PaymentStatus = 'PAID' | 'PARTIALLY_PAID' | 'DUE'
+export type TaxMode = 'inclusive' | 'exclusive'
+export type DiscountType = 'pct' | 'fixed'
+
+export type Sale = {
+  id: string
+  sale_number: string
+  sale_date: string
+  customer_id: string | null
+  customer_name: string | null
+  customer_phone: string | null
+  cashier_id: string | null
+  cashier_name: string | null
+  cashier_email: string | null
+  location_id: string | null
+  location_name: string | null
+  status: SaleStatus
+  subtotal: number
+  item_discount_total: number
+  bill_discount: number
+  tax_total: number
+  round_off: number
+  grand_total: number
+  paid_amount: number
+  due_amount: number
+  payment_status: PaymentStatus
+  tax_mode: TaxMode | string
+  inter_state: boolean
+  price_overridden: boolean
+  notes: string | null
+  cancelled_at: string | null
+  cancelled_by: string | null
+  cancel_reason: string | null
+  created_at: string
+}
+
+export type SaleItem = {
+  id: string
+  sale_id: string
+  variant_id: string | null
+  product_name: string
+  product_code: string | null
+  sku: string
+  size_name: string | null
+  color_name: string | null
+  hsn_code: string | null
+  gst_rate: number
+  quantity: number
+  base_price: number
+  unit_price: number
+  price_overridden: boolean
+  mrp: number | null
+  discount_type: DiscountType | string
+  discount_value: number
+  discount_amount: number
+  tax_amount: number
+  line_total: number
+  created_at: string
+}
+
+export type SalePayment = {
+  id: string
+  sale_id: string
+  method: string
+  amount: number
+  reference: string | null
+  cash_received: number | null
+  cash_change: number
+  is_credit: boolean
+  recorded_by: string | null
+  created_at: string
+}
+
+export type HeldBillStatus = 'HELD' | 'RESUMED' | 'DISCARDED'
+
+export type HeldBill = {
+  id: string
+  label: string
+  cart: Record<string, unknown>
+  customer_name: string | null
+  item_count: number
+  total: number | null
+  status: HeldBillStatus
+  cashier_id: string
+  held_at: string
+  resumed_at: string | null
+  discarded_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock'
 
 /** Row shape returned by stock_page() RPC */
@@ -404,6 +525,10 @@ export type AppSettings = {
   pos: {
     require_customer: boolean
     allow_price_edit: boolean
+    allow_credit_sales: boolean
+    default_tax_mode: 'inclusive' | 'exclusive' | string
+    max_item_discount_pct: number
+    max_bill_discount_pct: number
     default_payment_method: string
     round_off: boolean
     bill_footer_note: string
@@ -534,6 +659,36 @@ export type Database = {
         Update: never
         Relationships: []
       }
+      customers: {
+        Row: Customer
+        Insert: Omit<Customer, 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Omit<Customer, 'id' | 'created_at' | 'updated_at'>>
+        Relationships: []
+      }
+      sales: {
+        Row: Sale
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      sale_items: {
+        Row: SaleItem
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      sale_payments: {
+        Row: SalePayment
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      held_bills: {
+        Row: HeldBill
+        Insert: never
+        Update: Partial<Pick<HeldBill, 'status' | 'resumed_at' | 'discarded_at' | 'updated_at'>>
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -636,6 +791,40 @@ export type Database = {
         }
         Returns: Json
       }
+      pos_search: {
+        Args: { p_query?: string | null; p_limit?: number | null }
+        Returns: Json
+      }
+      get_pos_config: { Args: Record<string, never>; Returns: Json }
+      create_sale: { Args: { p_payload: unknown }; Returns: Json }
+      cancel_sale: { Args: { p_sale_id: string; p_reason: string }; Returns: Json }
+      hold_bill: {
+        Args: {
+          p_cart: unknown
+          p_label?: string | null
+          p_customer?: string | null
+          p_item_count?: number | null
+          p_total?: number | null
+        }
+        Returns: Json
+      }
+      resume_held_bill: { Args: { p_id: string }; Returns: Json }
+      discard_held_bill: { Args: { p_id: string }; Returns: Json }
+      sales_page: {
+        Args: {
+          p_search?: string | null
+          p_date_from?: string | null
+          p_date_to?: string | null
+          p_payment_method?: string | null
+          p_cashier_id?: string | null
+          p_status?: string | null
+          p_payment_status?: string | null
+          p_limit?: number | null
+          p_offset?: number | null
+        }
+        Returns: Json
+      }
+      sale_detail: { Args: { p_sale_id: string }; Returns: Json }
     }
     Enums: {
       user_role: UserRole
