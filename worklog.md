@@ -142,3 +142,22 @@ Stage Summary:
 - 0011 is READY: user applies supabase/migrations/0011_phase4_statement_till_payments.sql in the Supabase SQL Editor after 0010 (idempotent, additive, function-body only)
 - Existing migrations 0001–0010 untouched, per user instruction; no other existing behavior changed
 - Statement closing balance will then match real dues everywhere (₹618 → correct), showing till payments as credit lines
+
+---
+Task ID: 7
+Agent: main (Super Z)
+Task: Phase 5 — reporting + dashboard + exports + audit viewer + production hardening (user-approved; migrations 0001–0011 untouched)
+
+Work Log:
+- Migration 0012_phase5_reporting.sql (2,300 lines, additive, idempotent): 11 index additions; internal variant_unit_costs() (weighted-avg purchase cost, current-cost fallback); 17 report RPCs (dashboard_summary, sales/product-sales/catalog-performance/payment/gst/profit/stock-valuation/stock-performance/purchase/supplier/customer/expense/returns/cash/audit_page + stock_page/stock_history_page reuse). All DB-side, tz-correct boundaries, view_reports/view_audit_logs gated, grants revoked from anon.
+- Frontend: full /reports module (overview grid + 17 report views via generic TableReportView/SectionReportView framework with Apply-only filters, CSV export capped at 5,000 rows, print CSS, responsive column hiding); period-aware real dashboard via dashboard_summary RPC with pre-0012 fallback; report types added to database.ts.
+- Local validation: pgtest test-0012.ts — 116/116 PASS (all RPCs vs independent recomputation, permission matrix incl. anon role + grants, RLS spot checks, ledger integrity: stock ledger vs balances, paid/due invariants, payables, orphans, allocation caps; concurrency: last-unit race, 8 parallel invoices all distinct, parallel payments). Idempotency: 0012 re-applied 5x.
+- Performance (perf-0012.ts): 50k sales/150k items/60k payments/4k variants seeded locally — every report query 2–75 ms; index/bitmap scans confirmed on date-windowed paths.
+- Browser E2E (agent-browser, cloud-backed dev server): login, dashboard with period selector + graceful pre-0012 fallback + migration notice, reports grid (17 reports, permission-gated), all 17 report pages render with setup notices, current-stock + movements show REAL cloud data end-to-end. Found & fixed 2 real bugs: (1) hydration mismatch from print-header clock → client-only timestamp; (2) supabase.rpc method detached from this → .bind(supabase). Zero page errors after fixes. No horizontal overflow at 320/375/768/1280/1920.
+- Cloud test user pg-phase5-test@praveengarments.com created for verification and DELETED after (auth + profile cascade confirmed).
+- Docs: migrations README 0012 row; repo README Phase 5 section + phase boundary update; reset-full.ts chain now 0001→0012.
+
+Stage Summary:
+- Migration 0012 prepared, validated locally (116 checks + perf evidence), NOT yet applied to cloud (user must run it in Supabase SQL editor, same as 0011)
+- All existing migrations untouched; no tables/data changed; tsc src/ = 0 errors; eslint new files = clean
+- Pre-existing tsc errors in legacy scripts/ + pgtest harness remain (documented, predate Phase 5)

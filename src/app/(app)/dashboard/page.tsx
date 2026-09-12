@@ -3,12 +3,19 @@ import Link from 'next/link'
 import {
   AlertTriangle,
   ArrowRight,
+  Boxes,
   CheckCircle2,
   Circle,
+  Coins,
   IndianRupee,
   PackageX,
+  Percent,
   Receipt,
+  RotateCcw,
   Shirt,
+  ShoppingCart,
+  TrendingUp,
+  Truck,
   Users,
   Wallet,
 } from 'lucide-react'
@@ -19,7 +26,10 @@ import { formatMoney } from '@/lib/catalog/constants'
 import { PageHeader } from '@/components/shared/page-header'
 import { StatCard } from '@/components/shared/stat-card'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { DashboardPeriodSelect } from '@/components/dashboard/period-select'
+import { resolvePeriod, type PeriodPreset } from '@/lib/reports/period'
 
 export const metadata: Metadata = { title: 'Dashboard' }
 
@@ -42,10 +52,34 @@ interface RecentSale {
   sale_date: string
 }
 
+interface DashSummary {
+  sales: null | {
+    bills: number
+    items_sold: number
+    gross_sales: number
+    item_discounts: number
+    bill_discounts: number
+    tax_collected: number
+    round_off: number
+    paid_amount: number
+    due_amount: number
+    returns_value: number
+    refunds: number
+    exchanges: number
+    net_sales: number
+    avg_bill_value: number
+  }
+  purchases: null | { invoices: number; purchase_value: number; purchase_tax: number; returns_value: number }
+  expenses: null | { count: number; total: number; pending_total: number; approved_total: number }
+  customers: null | { active: number; outstanding: number; advance: number }
+  suppliers: null | { active: number; payable: number; advance: number }
+  inventory: null | { total_qty: number; cost_value: number; selling_value: number; low_stock?: number; out_of_stock?: number }
+  profit: null | { net_sales: number; cogs: number; cost_coverage_pct: number; gross_profit: number; expenses: number; net_profit: number }
+}
+
 /**
  * UTC instant of local midnight in the given IANA timezone — keeps
- * "today" correct for stores west/east of UTC (no DST in India, but this
- * works for any configured timezone).
+ * "today" correct for any configured timezone.
  */
 function zonedStartOfDay(timeZone: string): Date {
   const now = new Date()
@@ -65,7 +99,7 @@ function zonedStartOfDay(timeZone: string): Date {
     const offset = asUTC - now.getTime()
     return new Date(Date.UTC(get('year'), get('month') - 1, get('day'), 0, 0, 0) - offset)
   } catch {
-    return new Date(new Date().toDateString()) // fall back to server-local midnight
+    return new Date(new Date().toDateString())
   }
 }
 
@@ -80,14 +114,105 @@ function timeAgoLabel(iso: string): string {
   return `${days} day${days > 1 ? 's' : ''} ago`
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  const sp = await searchParams
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   const bootstrap = await loadAppBootstrap(user!.id)
 
-  // Real (small) counts for the setup checklist — RLS-scoped, never fake.
+  const timezone = bootstrap.company?.timezone || 'Asia/Kolkata'
+  const periodParam = (typeof sp.period === 'string' ? sp.period : 'today') as PeriodPreset
+  const period: PeriodPreset = ['today', 'yesterday', 'this_week', 'this_month', 'this_year', 'custom'].includes(periodParam)
+    ? periodParam
+    : 'today'
+  const range =
+    period === 'custom' && typeof sp.from === 'string' && typeof sp.to === 'string'
+      ? { from: sp.from, to: sp.to }
+      : resolvePeriod(period === 'custom' ? 'today' : period, timezone) ?? { from: '', to: '' }
+
+  const periodText =
+    period === 'today'
+      ? 'Today'
+      : period === 'yesterday'
+        ? 'Yesterday'
+        : period === 'this_week'
+          ? 'This week'
+          : period === 'this_month'
+            ? 'This month'
+            : period === 'this_year'
+              ? 'This year'
+              : `${range.from} → ${range.to}`
+
+  // ---- One round trip for all stats (Phase 5) ----------------------------
+  let summary: DashSummary | null = null
+  let summaryPendingMigration = false
+  if (bootstrap.dbReady) {
+    const { data, error } = await supabase.rpc('dashboard_summary', {
+      p_from: range.from || null,
+      p_to: range.to || null,
+    })
+    if (error) {
+      if (isTableMissing(error)) {
+        summaryPendingMigration = true
+      } else {
+        logError('dashboard:summary', error)
+      }
+    } else if (data) {
+      summary = data as unknown as DashSummary
+    }
+  }
+
+  // ---- Fallback (pre-0012 database): today-only direct queries ----------
+  const canViewSales =
+    bootstrap.dbReady &&
+    (bootstrap.permissions.includes('view_sales') ||
+      bootstrap.permissions.includes('create_sale') ||
+      bootstrap.permissions.includes('cancel_sale'))
+  if (!summary && bootstrap.dbReady && canViewSales) {
+    const dayStart = zonedStartOfDay(timezone).toISOString()
+    const { data: todaySales, error: salesError } = await supabase
+      .from('sales')
+      .select('grand_total, item_discount_total, bill_discount, tax_total, paid_amount, due_amount, status')
+      .gte('sale_date', dayStart)
+      .eq('status', 'COMPLETED')
+    if (salesError && !isTableMissing(salesError)) logError('dashboard:today-sales', salesError)
+    if (todaySales) {
+      const gross = todaySales.reduce((s, r) => s + Number(r.grand_total ?? 0), 0)
+      const items = 0
+      summary = {
+        sales: {
+          bills: todaySales.length,
+          items_sold: items,
+          gross_sales: gross,
+          item_discounts: todaySales.reduce((s, r) => s + Number(r.item_discount_total ?? 0), 0),
+          bill_discounts: todaySales.reduce((s, r) => s + Number(r.bill_discount ?? 0), 0),
+          tax_collected: todaySales.reduce((s, r) => s + Number(r.tax_total ?? 0), 0),
+          round_off: 0,
+          paid_amount: todaySales.reduce((s, r) => s + Number(r.paid_amount ?? 0), 0),
+          due_amount: todaySales.reduce((s, r) => s + Number(r.due_amount ?? 0), 0),
+          returns_value: 0,
+          refunds: 0,
+          exchanges: 0,
+          net_sales: gross,
+          avg_bill_value: todaySales.length > 0 ? gross / todaySales.length : 0,
+        },
+        purchases: null,
+        expenses: null,
+        customers: null,
+        suppliers: null,
+        inventory: null,
+        profit: null,
+      }
+    }
+  }
+
+  // ---- Setup checklist (unchanged behaviour) ------------------------------
   let branchCount = 0
   let staffCount: number | null = null
   if (bootstrap.dbReady) {
@@ -109,7 +234,6 @@ export default async function DashboardPage() {
     }
   }
 
-  const timezone = bootstrap.company?.timezone || 'Asia/Kolkata'
   const todayLabel = new Intl.DateTimeFormat('en-IN', {
     weekday: 'long',
     day: 'numeric',
@@ -118,67 +242,9 @@ export default async function DashboardPage() {
     timeZone: timezone,
   }).format(new Date())
 
-  // ---- Permissions gate (sales tables are additionally RLS-guarded) ----
-  const canViewSales =
-    bootstrap.dbReady &&
-    (bootstrap.permissions.includes('view_sales') ||
-      bootstrap.permissions.includes('create_sale') ||
-      bootstrap.permissions.includes('cancel_sale'))
-  const canManageCustomers = bootstrap.dbReady && bootstrap.permissions.includes('manage_customers')
-
-  // ---- Live POS stats (Phase 3): today's takings in the store timezone ----
-  const dayStart = zonedStartOfDay(timezone).toISOString()
-  let todayRevenue: number | null = null
-  let todayBills: number | null = null
-  let itemsSoldToday: number | null = null
-  let pendingDue: number | null = null
-  let pendingBills: number | null = null
+  // ---- Recent sales feed ---------------------------------------------------
   let recentSales: RecentSale[] | null = null
-
   if (canViewSales) {
-    const { data: todaySales, error: salesError } = await supabase
-      .from('sales')
-      .select('id, sale_number, customer_name, grand_total, status, payment_status, sale_date')
-      .gte('sale_date', dayStart)
-      .neq('status', 'CANCELLED')
-      .order('sale_date', { ascending: false })
-      .limit(500)
-    if (salesError) {
-      if (!isTableMissing(salesError)) logError('dashboard:today-sales', salesError)
-    } else if (todaySales) {
-      todayBills = todaySales.length
-      todayRevenue = todaySales.reduce((s, r) => s + Number(r.grand_total ?? 0), 0)
-      if (todaySales.length > 0) {
-        const ids = todaySales.map((r) => r.id)
-        const { data: items, error: itemsError } = await supabase
-          .from('sale_items')
-          .select('quantity')
-          .in('sale_id', ids)
-        if (itemsError) {
-          if (!isTableMissing(itemsError)) logError('dashboard:today-items', itemsError)
-        } else {
-          itemsSoldToday = (items ?? []).reduce((s, r) => s + Number(r.quantity ?? 0), 0)
-        }
-      } else {
-        itemsSoldToday = 0
-      }
-    }
-
-    // Outstanding credit — all non-cancelled bills with a balance (not just today).
-    const { data: dueRows, error: dueError } = await supabase
-      .from('sales')
-      .select('due_amount')
-      .neq('status', 'CANCELLED')
-      .neq('payment_status', 'PAID')
-      .limit(1000)
-    if (dueError) {
-      if (!isTableMissing(dueError)) logError('dashboard:pending-payments', dueError)
-    } else if (dueRows) {
-      pendingBills = dueRows.length
-      pendingDue = dueRows.reduce((s, r) => s + Number(r.due_amount ?? 0), 0)
-    }
-
-    // Recent sales feed (latest five, any date).
     const { data: recent, error: recentError } = await supabase
       .from('sales')
       .select('id, sale_number, customer_name, grand_total, status, payment_status, sale_date')
@@ -188,30 +254,6 @@ export default async function DashboardPage() {
       if (!isTableMissing(recentError)) logError('dashboard:recent-sales', recentError)
     } else {
       recentSales = (recent ?? []) as RecentSale[]
-    }
-  }
-
-  // ---- Customer count (permission-gated, RLS double-checks) ----
-  let customerCount: number | null = null
-  if (canManageCustomers) {
-    const { count, error } = await supabase.from('customers').select('*', { count: 'exact', head: true })
-    if (error) {
-      if (!isTableMissing(error)) logError('dashboard:customers', error)
-    } else {
-      customerCount = count ?? 0
-    }
-  }
-
-  // Live inventory stats (Phase 2): low-stock / out-of-stock counts via the
-  // indexed get_inventory_stats RPC. Null when the user lacks
-  // view_inventory or the Phase 2 migrations are pending.
-  let inventoryStats: { low_stock: number | null; out_of_stock: number | null } | null = null
-  if (bootstrap.dbReady && bootstrap.permissions.includes('view_inventory')) {
-    const { data: statsData, error: statsError } = await supabase.rpc('get_inventory_stats')
-    if (statsError) {
-      if (!isTableMissing(statsError)) logError('dashboard:inventory-stats', statsError)
-    } else if (statsData) {
-      inventoryStats = statsData as { low_stock: number | null; out_of_stock: number | null }
     }
   }
 
@@ -242,105 +284,145 @@ export default async function DashboardPage() {
   ]
   const completedCount = checklist.filter((c) => c.done).length
 
-  // Hint strings resolved before JSX — keeps null-narrowing explicit and readable.
-  const salesHint =
-    todayRevenue === null || todayBills === null
-      ? 'Requires sales access'
-      : todayBills === 0
-        ? 'No bills yet today'
-        : `${todayBills} bill${todayBills > 1 ? 's' : ''} today`
-  const pendingHint =
-    pendingDue === null || pendingBills === null
-      ? 'Requires sales access'
-      : pendingBills === 0
-        ? 'No outstanding credit'
-        : `Across ${pendingBills} bill${pendingBills > 1 ? 's' : ''}`
+  const sales = summary?.sales ?? null
+  const salesHint = sales === null ? 'Requires sales access' : sales.bills === 0 ? 'No bills in this period' : `${sales.bills} bill${sales.bills > 1 ? 's' : ''} · avg ${formatMoney(sales.avg_bill_value)}`
+  const netTone = sales && sales.net_sales < 0 ? 'destructive' : undefined
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Dashboard"
-        description={todayLabel}
+        description={`${periodText} · ${todayLabel}`}
         actions={
-          <Button asChild variant="outline" size="sm" className="hidden sm:inline-flex">
-            <Link href="/pos">
-              Open POS
-              <ArrowRight className="size-4" aria-hidden="true" />
-            </Link>
-          </Button>
+          <div className="flex flex-wrap items-center gap-3">
+            <DashboardPeriodSelect />
+            <Button asChild variant="outline" size="sm" className="hidden sm:inline-flex">
+              <Link href="/pos">
+                Open POS
+                <ArrowRight className="size-4" aria-hidden="true" />
+              </Link>
+            </Button>
+          </div>
         }
       />
 
-      {/* ---- Live store statistics (POS / inventory data, permission-scoped) ---- */}
+      {summaryPendingMigration ? (
+        <Alert className="print:hidden">
+          <AlertTitle>Full dashboard statistics need one more migration</AlertTitle>
+          <AlertDescription>
+            Showing today's basics. Apply <span className="font-mono text-xs">0012_phase5_reporting.sql</span> in the
+            Supabase SQL editor to unlock period analytics, profit and valuation cards.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {/* ---- Live store statistics (permission-scoped sections) ---- */}
       <section aria-label="Store statistics" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          label="Today's Sales"
+          label={`${periodText} sales (net)`}
           icon={<IndianRupee />}
-          value={todayRevenue === null ? null : formatMoney(todayRevenue)}
+          value={sales === null ? null : formatMoney(sales.net_sales)}
           hint={salesHint}
           variant="hero"
           gradient="bg-gradient-to-br from-emerald-500 to-teal-600"
+          tone={netTone}
         />
         <StatCard
-          label="Today's Bills"
+          label="Bills"
           icon={<Receipt />}
-          value={todayBills}
-          hint={todayBills === null ? 'Requires sales access' : 'Completed bills since midnight'}
+          value={sales?.bills ?? null}
+          hint={sales === null ? 'Requires sales access' : 'Completed bills in the period'}
           variant="hero"
           gradient="bg-gradient-to-br from-violet-500 to-purple-600"
         />
         <StatCard
-          label="Items Sold"
+          label="Items sold"
           icon={<Shirt />}
-          value={itemsSoldToday}
-          hint={itemsSoldToday === null ? 'Requires sales access' : 'Units sold today'}
+          value={sales?.items_sold ?? null}
+          hint={sales === null ? 'Requires sales access' : 'Units sold in the period'}
           variant="hero"
           gradient="bg-gradient-to-br from-sky-500 to-blue-600"
         />
         <StatCard
-          label="Customers"
-          icon={<Users />}
-          value={customerCount}
-          hint={customerCount === null ? 'Requires customer access' : 'Saved customers'}
-          variant="hero"
-          gradient="bg-gradient-to-br from-pink-500 to-rose-500"
-        />
-        <StatCard
-          label="Low Stock"
-          icon={<AlertTriangle />}
-          value={inventoryStats?.low_stock ?? null}
+          label="Gross profit (est.)"
+          icon={<TrendingUp />}
+          value={summary?.profit ? formatMoney(summary.profit.gross_profit) : null}
           hint={
-            inventoryStats === null
-              ? 'Requires inventory access'
-              : inventoryStats.low_stock === null
-                ? 'Requires inventory access'
-                : inventoryStats.low_stock > 0
-                  ? 'Variants at or below their reorder level'
-                  : 'No items below reorder level'
+            summary?.profit
+              ? `COGS ${formatMoney(summary.profit.cogs)} · ${summary.profit.cost_coverage_pct}% purchase-cost coverage`
+              : 'Requires reports access'
           }
+          variant="hero"
+          gradient="bg-gradient-to-br from-amber-500 to-orange-600"
+        />
+        <StatCard label="Gross sales" icon={<IndianRupee />} value={sales ? formatMoney(sales.gross_sales) : null} hint={sales === null ? 'Requires sales access' : 'Total of completed bills'} />
+        <StatCard
+          label="Discounts"
+          icon={<Percent />}
+          value={sales ? formatMoney(sales.item_discounts + sales.bill_discounts) : null}
+          hint={sales === null ? 'Requires sales access' : 'Item + bill discounts'}
+        />
+        <StatCard label="Tax collected" icon={<Coins />} value={sales ? formatMoney(sales.tax_collected) : null} hint={sales === null ? 'Requires sales access' : 'Per each bill tax mode'} />
+        <StatCard
+          label="Returns & refunds"
+          icon={<RotateCcw />}
+          value={sales ? formatMoney(sales.returns_value) : null}
+          hint={sales === null ? 'Requires sales access' : sales.refunds > 0 ? `Refunded ${formatMoney(sales.refunds)}` : 'No refunds'}
           tone="warning"
         />
         <StatCard
-          label="Out of Stock"
+          label="Purchases"
+          icon={<Truck />}
+          value={summary?.purchases ? formatMoney(summary.purchases.purchase_value) : null}
+          hint={summary?.purchases ? `${summary.purchases.invoices} received invoices` : 'Requires purchases access'}
+        />
+        <StatCard
+          label="Expenses"
+          icon={<Wallet />}
+          value={summary?.expenses ? formatMoney(summary.expenses.total) : null}
+          hint={summary?.expenses ? `${formatMoney(summary.expenses.pending_total)} pending` : 'Requires expenses access'}
+          tone="warning"
+        />
+        <StatCard
+          label="Customer dues"
+          icon={<Users />}
+          value={summary?.customers ? formatMoney(summary.customers.outstanding) : null}
+          hint={summary?.customers ? `${summary.customers.active} active customers` : 'Requires customer access'}
+          tone="warning"
+        />
+        <StatCard
+          label="Supplier dues"
+          icon={<Truck />}
+          value={summary?.suppliers ? formatMoney(summary.suppliers.payable) : null}
+          hint={summary?.suppliers ? `${summary.suppliers.active} active suppliers` : 'Requires purchases access'}
+          tone="warning"
+        />
+        <StatCard
+          label="Stock value (cost)"
+          icon={<Boxes />}
+          value={summary?.inventory ? formatMoney(summary.inventory.cost_value) : null}
+          hint={summary?.inventory ? `${summary.inventory.total_qty} units on hand` : 'Requires inventory access'}
+        />
+        <StatCard
+          label="Low stock"
+          icon={<AlertTriangle />}
+          value={summary?.inventory?.low_stock ?? null}
+          hint={summary?.inventory === null ? 'Requires inventory access' : 'Variants at or below reorder level'}
+          tone="warning"
+        />
+        <StatCard
+          label="Out of stock"
           icon={<PackageX />}
-          value={inventoryStats?.out_of_stock ?? null}
-          hint={
-            inventoryStats === null
-              ? 'Requires inventory access'
-              : inventoryStats.out_of_stock === null
-                ? 'Requires inventory access'
-                : inventoryStats.out_of_stock > 0
-                  ? 'Variants with zero available stock'
-                  : 'Everything is stocked'
-          }
+          value={summary?.inventory?.out_of_stock ?? null}
+          hint={summary?.inventory === null ? 'Requires inventory access' : 'Variants with zero available stock'}
           tone="destructive"
         />
         <StatCard
-          label="Pending Payments"
-          icon={<Wallet />}
-          value={pendingDue === null ? null : formatMoney(pendingDue)}
-          hint={pendingHint}
-          tone="warning"
+          label="Bills pending payment"
+          icon={<ShoppingCart />}
+          value={sales ? formatMoney(sales.due_amount) : null}
+          hint={sales === null ? 'Requires sales access' : sales.due_amount > 0 ? 'Credit outstanding this period' : 'All bills settled'}
+          tone={sales && sales.due_amount > 0 ? 'warning' : undefined}
         />
       </section>
 

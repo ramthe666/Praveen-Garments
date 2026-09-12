@@ -281,10 +281,58 @@ pgtest/                  local Postgres engine test harness
 
 ## Phase boundary
 
-Phase 5 (loyalty, promotions engine, complex accounting, advanced
-reporting) is **not** started. Phase 4 covered business operations:
-customer/supplier accounts, the purchase-to-pay cycle, returns,
-exchanges, refunds and expenses. The engines are ready for more: every
-financial record is linked to its source document, and the movement
-ledger already models PURCHASE / SALES_RETURN / PURCHASE_RETURN /
-EXCHANGE flows at the transaction level.
+Phase 5 (reporting + dashboard + exports + audit viewer + production
+hardening) is complete — see "Phase 5 — reporting & production hardening
+notes" above. Not planned: loyalty, promotions engine, multi-tenant
+features, public signup, AI features. The application remains a private
+single-business system for Praveen Garments.
+
+## Phase 5 — reporting & production hardening notes
+
+**Migration `0012_phase5_reporting.sql`** (additive — apply after 0011) adds
+the full reporting layer: 11 index additions for report/lookup access
+patterns, the internal `variant_unit_costs()` cost basis, and 17
+permission-gated report RPCs. All aggregation happens database-side with
+timezone-correct day boundaries from `company_settings.timezone`; the
+browser only renders bounded results (25-row pages, 5,000-row export cap).
+
+### Reports module (`/reports`)
+
+17 reports grouped into Sales & revenue, Inventory, Purchases & parties,
+Money and Administration — each with period presets (Today / Yesterday /
+This week / This month / This year / Custom), filters that only re-query on
+**Apply** (never per keystroke), CSV export (bounded, includes a warning
+when truncated), print-friendly output and responsive column hiding.
+Requires the `view_reports` permission (admin, manager, accountant); the
+audit log viewer additionally needs `view_audit_logs` (admin).
+
+### Real dashboard
+
+The dashboard is period-aware (selector drives `?period=` search params,
+the server recomputes) and reads every statistic from a single
+`dashboard_summary` RPC call — sections the caller lacks permission for
+return `null` and render a "requires … access" hint. While `0012` is not
+yet applied the dashboard falls back to the Phase 3 today-only direct
+queries and shows a migration notice, so nothing regresses mid-upgrade.
+
+### Costing & profit honesty
+
+- **Stock valuation** uses the configured `inventory.costing_method` =
+  `average`: unit cost = weighted average of received purchase lines (net
+  of tax and purchase returns). Variants without purchase history fall
+  back to the current variant/product cost price and are flagged
+  `current_cost`.
+- **Profit is labelled an estimate.** COGS values sold quantity (net of
+  returns and exchange trade-ins) at that average cost; the report states
+  its basis and the purchase-cost coverage percentage. Exchange issues are
+  reported separately, not mixed into COGS. Nothing is presented as exact
+  historical per-sale cost because bills did not snapshot unit cost.
+
+### Performance evidence
+
+Local harness (embedded Postgres 18) with 50,000 sales / 150,000 items /
+60,000 payments / 4,000 variants: every report query executes in
+2–75 ms; date-windowed queries use the bitmap/index scans over the
+0012-composited indexes (see `pgtest/scripts/local/perf-0012.ts`).
+Functional + permission + ledger-integrity + concurrency coverage lives in
+`pgtest/scripts/local/test-0012.ts` (116 checks).

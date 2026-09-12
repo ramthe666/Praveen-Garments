@@ -1002,6 +1002,146 @@ export type Database = {
         }
         Returns: Json
       }
+      // ---- Phase 5 reporting RPCs (0012) --------------------------------
+      dashboard_summary: {
+        Args: { p_from?: string | null; p_to?: string | null }
+        Returns: Json
+      }
+      sales_report: {
+        Args: {
+          p_date_from?: string | null
+          p_date_to?: string | null
+          p_search?: string | null
+          p_customer_id?: string | null
+          p_cashier_id?: string | null
+          p_payment_method?: string | null
+          p_variant_id?: string | null
+          p_category_id?: string | null
+          p_brand_id?: string | null
+          p_location_id?: string | null
+          p_status?: string | null
+          p_sort?: string | null
+          p_limit?: number | null
+          p_offset?: number | null
+        }
+        Returns: Json
+      }
+      product_sales_report: {
+        Args: {
+          p_date_from?: string | null
+          p_date_to?: string | null
+          p_search?: string | null
+          p_category_id?: string | null
+          p_brand_id?: string | null
+          p_variant_id?: string | null
+          p_sort?: string | null
+          p_limit?: number | null
+          p_offset?: number | null
+        }
+        Returns: Json
+      }
+      catalog_performance_report: {
+        Args: { p_date_from?: string | null; p_date_to?: string | null; p_group_by?: string | null }
+        Returns: Json
+      }
+      payment_report: {
+        Args: { p_date_from?: string | null; p_date_to?: string | null }
+        Returns: Json
+      }
+      gst_report: {
+        Args: { p_date_from?: string | null; p_date_to?: string | null }
+        Returns: Json
+      }
+      profit_report: {
+        Args: { p_date_from?: string | null; p_date_to?: string | null }
+        Returns: Json
+      }
+      stock_valuation_report: {
+        Args: {
+          p_location_id?: string | null
+          p_category_id?: string | null
+          p_brand_id?: string | null
+          p_search?: string | null
+          p_sort?: string | null
+          p_limit?: number | null
+          p_offset?: number | null
+        }
+        Returns: Json
+      }
+      stock_performance_report: {
+        Args: {
+          p_date_from?: string | null
+          p_date_to?: string | null
+          p_class?: string | null
+          p_search?: string | null
+          p_sort?: string | null
+          p_limit?: number | null
+          p_offset?: number | null
+        }
+        Returns: Json
+      }
+      purchase_report: {
+        Args: {
+          p_date_from?: string | null
+          p_date_to?: string | null
+          p_search?: string | null
+          p_supplier_id?: string | null
+          p_status?: string | null
+          p_payment_status?: string | null
+          p_sort?: string | null
+          p_limit?: number | null
+          p_offset?: number | null
+        }
+        Returns: Json
+      }
+      supplier_report: {
+        Args: {
+          p_date_from?: string | null
+          p_date_to?: string | null
+          p_search?: string | null
+          p_sort?: string | null
+          p_limit?: number | null
+          p_offset?: number | null
+        }
+        Returns: Json
+      }
+      customer_report: {
+        Args: {
+          p_date_from?: string | null
+          p_date_to?: string | null
+          p_search?: string | null
+          p_type?: string | null
+          p_sort?: string | null
+          p_limit?: number | null
+          p_offset?: number | null
+        }
+        Returns: Json
+      }
+      expense_report: {
+        Args: { p_date_from?: string | null; p_date_to?: string | null }
+        Returns: Json
+      }
+      returns_report: {
+        Args: { p_date_from?: string | null; p_date_to?: string | null }
+        Returns: Json
+      }
+      cash_report: {
+        Args: { p_date?: string | null }
+        Returns: Json
+      }
+      audit_page: {
+        Args: {
+          p_search?: string | null
+          p_action?: string | null
+          p_user_id?: string | null
+          p_date_from?: string | null
+          p_date_to?: string | null
+          p_entity_type?: string | null
+          p_limit?: number | null
+          p_offset?: number | null
+        }
+        Returns: Json
+      }
     }
     Enums: {
       user_role: UserRole
