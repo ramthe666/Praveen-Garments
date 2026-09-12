@@ -13,7 +13,7 @@ import { logError } from '@/lib/errors'
 
 interface StatementLine {
   entry_date: string
-  kind: 'bill' | 'payment' | 'return'
+  kind: 'bill' | 'payment' | 'till_payment' | 'return'
   doc_number: string
   debit: number
   credit: number
@@ -32,6 +32,7 @@ interface Statement {
 const KIND_LABELS: Record<StatementLine['kind'], string> = {
   bill: 'Bill',
   payment: 'Receipt',
+  till_payment: 'Till payment',
   return: 'Return credit',
 }
 
@@ -87,7 +88,7 @@ export function CustomerStatementDialog({
         <DialogHeader>
           <DialogTitle>Statement — {customerName}</DialogTitle>
           <DialogDescription>
-            Opening balance, bills, receipts and return credits for the selected range.
+            Opening balance, bills, till payments, receipts and return credits for the selected range.
           </DialogDescription>
         </DialogHeader>
 

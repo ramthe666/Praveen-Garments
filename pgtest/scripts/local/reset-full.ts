@@ -1,6 +1,6 @@
 /**
  * Full-chain fresh validation (Phase 4): drops the local harness and applies
- * the COMPLETE migration chain 0001 -> 0009 in order — the exact path the
+ * the COMPLETE migration chain 0001 -> 0011 in order — the exact path the
  * cloud Supabase will take. NEVER touches the real project.
  */
 import { readFileSync } from 'node:fs'
@@ -18,6 +18,7 @@ const MIGRATIONS = [
   '../supabase/migrations/0008_pos_billing.sql',
   '../supabase/migrations/0009_phase4_business_operations.sql',
   '../supabase/migrations/0010_phase4_active_filter_fix.sql',
+  '../supabase/migrations/0011_phase4_statement_till_payments.sql',
 ]
 
 const c = new Client(CONN)

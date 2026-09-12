@@ -122,3 +122,23 @@ Stage Summary:
 - Phase 2 VERIFIED END-TO-END against the live cloud DB: 70 + 29 checks, all real behaviors green
 - Deliverables: audit-attribution app fix, migration 0007 (awaiting user application for user_email on catalog audit rows), purge snippet, 5 reusable test scripts, 7 live screenshots
 - Phase 3 (POS/billing) intentionally NOT started per user instruction
+
+---
+Task ID: 6
+Agent: main (Super Z)
+Task: Fix customer statement closing balance not crediting till payments — additive migration 0011 only (user constraint: never change existing migrations)
+
+Work Log:
+- Workspace was recycled (code + preview gone) → cloned repo from GitHub with user-provided token; verified main clean at 1a5bb9c (0010 applied by user on cloud, untouched)
+- Diagnosed 0009 PART 31 `customer_statement()`: ledger = bills + customer_payments receipts + sales_returns credits only; POS checkout payments (`sale_payments` rows written by `create_sale`) never credited → statement overstates dues by exactly the till-paid amount (₹1,418 shown vs ₹618 real dues = ₹800 gap)
+- Key subtlety: `record_customer_payment` / `apply_customer_advance` MIRROR their receipts into `sale_payments` (reference = CR receipt number / method 'Store Credit') — crediting all sale_payments would double-count; mirrors must be excluded
+- Wrote 0011_phase4_statement_till_payments.sql (same pattern as 0010: single CREATE OR REPLACE, same signature/grants, zero table/data changes): till payments credited as new 'till_payment' line (doc = sale it settled) + folded into opening balance; excludes mirrors, is_credit marker rows, payments on non-COMPLETED sales
+- Frontend: customer-statement-dialog.tsx kind union + KIND_LABELS gained 'till_payment' ("Till payment"); dialog description updated; src/ tsc 0 errors
+- Local proof on embedded Postgres 18 harness (pgtest): reset-full chain 0001→0010, then test-0011.ts reproduces the exact ₹1,418/₹618 bug, applies 0011, verifies fix + all regressions — 29/29 PASS; re-ran full chain including 0011 — 27/27 PASS (idempotent, repro gracefully skipped)
+- Regression coverage: ledger receipts not double-counted, Store Credit mirrors not double-counted, credit-sale markers never credited, opening balance across date boundary, return credit branch unchanged, cancelled sale excluded (bill + till payment), permission gate + anon revocation intact, output shape unchanged
+- Harness: new pgtest boot.ts (embedded-postgres bootstrap, trust auth for local scripts) + test-0011.ts; reset-full.ts chain now includes 0011; migrations README table row added
+
+Stage Summary:
+- 0011 is READY: user applies supabase/migrations/0011_phase4_statement_till_payments.sql in the Supabase SQL Editor after 0010 (idempotent, additive, function-body only)
+- Existing migrations 0001–0010 untouched, per user instruction; no other existing behavior changed
+- Statement closing balance will then match real dues everywhere (₹618 → correct), showing till payments as credit lines
