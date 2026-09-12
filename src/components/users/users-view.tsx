@@ -19,6 +19,7 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import type { AppPermission, Branch, Profile, UserRole } from '@/types/database'
 import { ROLE_LABELS, ROLE_ORDER } from '@/lib/auth/constants'
+import { formatDateTime } from '@/lib/catalog/constants'
 import { isTableMissing, logError, toUserMessage } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -86,11 +87,6 @@ function RoleBadge({ role }: { role: UserRole }) {
 function initials(name: string, email: string): string {
   const fromName = name.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase()
   return fromName || email.slice(0, 2).toUpperCase()
-}
-
-function formatDateTime(iso: string | null): string {
-  if (!iso) return '—'
-  return new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso))
 }
 
 function generatePassword(): string {

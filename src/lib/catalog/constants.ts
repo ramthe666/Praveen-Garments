@@ -74,14 +74,30 @@ export function formatMoney(value: number | null | undefined): string {
   }).format(value)
 }
 
+/**
+ * Store display timezone. Every date rendered during SSR must be formatted
+ * with an explicit timeZone, otherwise the Node server (UTC) and the browser
+ * (user-local) produce different text for the same instant and React throws
+ * a hydration mismatch. The store operates in IST — same zone the dashboard
+ * and audit views use for "today" boundaries.
+ */
+export const STORE_TIME_ZONE = 'Asia/Kolkata'
+
 export function formatDate(iso: string | null | undefined): string {
   if (!iso) return '—'
-  return new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium' }).format(new Date(iso))
+  return new Intl.DateTimeFormat('en-IN', {
+    dateStyle: 'medium',
+    timeZone: STORE_TIME_ZONE,
+  }).format(new Date(iso))
 }
 
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return '—'
-  return new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso))
+  return new Intl.DateTimeFormat('en-IN', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: STORE_TIME_ZONE,
+  }).format(new Date(iso))
 }
 
 /** Debounce hook used by list-page search inputs. */
