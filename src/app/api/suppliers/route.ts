@@ -7,13 +7,13 @@ import { logError, toUserMessage } from '@/lib/errors'
 export const dynamic = 'force-dynamic'
 
 /**
- * POST /api/suppliers — create a supplier (GST details, payment terms).
+ * POST /api/suppliers — create a supplier (GST details, contact info).
  * PATCH /api/suppliers — update / deactivate / reactivate.
  * Permission: manage_suppliers (Admin, Manager, Purchase Manager by default).
  */
 const FIELDS = [
   'contact_person', 'phone', 'email', 'address', 'city', 'state', 'pincode', 'gstin',
-  'payment_terms', 'notes',
+  'notes',
 ] as const
 
 export async function POST(request: NextRequest) {

@@ -50,6 +50,7 @@ Open the Supabase dashboard → **SQL Editor** → new query, then run each file
 | 7 | `supabase/migrations/0007_audit_email_attribution.sql` | catalog audit trigger now also records `user_email` (polish — run after Phase 2) |
 | 8 | `supabase/migrations/0008_pos_billing.sql` | **Phase 3 POS/billing**: customers, sales/items/payments, held bills, invoice numbering, `create_sale()` atomic engine, `cancel_sale()`, POS search/config RPCs, sales history, RLS, new permissions (+ hotfix for the Phase 1 settings-audit trigger — see file header) |
 | 9 | `supabase/migrations/0009_phase4_business_operations.sql` | **Phase 4 business operations**: suppliers, purchase orders/items, purchase invoices/items, customer & supplier payments + FIFO allocations, sales returns, purchase returns, exchanges, expenses + categories, document-number counters, the atomic RPC engines for every workflow, page/detail/statement RPCs, new permissions, RLS, `expense-attachments` storage bucket |
+| 10 | `supabase/migrations/0010_phase4_active_filter_fix.sql` | Fix: `customers_page` / `suppliers_page` active/inactive filters rebuilt with `array_append` (PostgreSQL operator-resolution fix — run right after 0009) |
 
 All migrations are idempotent and non-destructive (new objects only — they
 never alter or drop earlier schema). Details: `supabase/migrations/README.md`.

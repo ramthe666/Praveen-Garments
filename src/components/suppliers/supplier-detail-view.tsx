@@ -27,7 +27,6 @@ interface SupplierDetail {
     city: string | null
     state: string | null
     gstin: string | null
-    payment_terms: string | null
     notes: string | null
     is_active: boolean
     created_at: string
@@ -165,7 +164,6 @@ export function SupplierDetailView({ supplierId }: { supplierId: string }) {
             {supplier.contact_person ?? 'No contact'}
             {supplier.phone ? ` · ${supplier.phone}` : ''}
             {supplier.gstin ? ` · GSTIN ${supplier.gstin}` : ''}
-            {supplier.payment_terms ? ` · ${supplier.payment_terms}` : ''}
             {supplier.is_active ? '' : ' · inactive'}
           </p>
         </div>

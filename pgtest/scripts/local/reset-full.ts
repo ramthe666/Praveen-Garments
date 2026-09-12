@@ -17,6 +17,7 @@ const MIGRATIONS = [
   '../supabase/migrations/0007_audit_email_attribution.sql',
   '../supabase/migrations/0008_pos_billing.sql',
   '../supabase/migrations/0009_phase4_business_operations.sql',
+  '../supabase/migrations/0010_phase4_active_filter_fix.sql',
 ]
 
 const c = new Client(CONN)

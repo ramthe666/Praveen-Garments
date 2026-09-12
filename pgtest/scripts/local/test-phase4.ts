@@ -201,6 +201,13 @@ async function main() {
   check('customer created with Phase 4 fields', !!cust1)
   const custPage = await admin.query('select public.customers_page($1, null, null, 25, 0)', ['9876543210'])
   check('customers_page phone search', JSON.stringify(custPage.rows[0]).includes('Ravi Kumar'))
+  // regression for 0010: active/inactive filters (array_append fix)
+  const custActive = await admin.query(`select public.customers_page(null, null, 'active', 25, 0)`)
+  check('customers_page active filter', Array.isArray(custActive.rows[0].customers_page.rows)
+    && custActive.rows[0].customers_page.rows.length >= 1)
+  const custInactive = await admin.query(`select public.customers_page(null, null, 'inactive', 25, 0)`)
+  check('customers_page inactive filter', Array.isArray(custInactive.rows[0].customers_page.rows)
+    && custInactive.rows[0].customers_page.rows.length === 0)
 
   await expectError('cashier cannot create supplier', async () => {
     await cashier.query(`insert into public.suppliers (name) values ('X') `)
@@ -215,6 +222,14 @@ async function main() {
   check('supplier created', !!sup1)
   const supPage = await buyer.query('select public.suppliers_page($1, null, 25, 0)', ['Textiles'])
   check('suppliers_page search', JSON.stringify(supPage.rows[0]).includes('P4TEST Textiles'))
+  // regression for 0010: active/inactive filters must not hit the
+  // text[] || 'literal' operator-resolution trap (malformed array literal)
+  const supActive = await buyer.query(`select public.suppliers_page(null, 'active', 25, 0)`)
+  check('suppliers_page active filter', Array.isArray(supActive.rows[0].suppliers_page.rows)
+    && supActive.rows[0].suppliers_page.rows.some((r: any) => r.id === sup1))
+  const supInactive = await buyer.query(`select public.suppliers_page(null, 'inactive', 25, 0)`)
+  check('suppliers_page inactive filter', Array.isArray(supInactive.rows[0].suppliers_page.rows)
+    && !supInactive.rows[0].suppliers_page.rows.some((r: any) => r.id === sup1))
 
   console.log('\n== PURCHASE ORDERS ==')
   const po = (await buyer.query(

@@ -135,7 +135,9 @@ export function PurchasesView() {
       const { data: sups, error: supsError } = await supabase.rpc('suppliers_page', {
         p_search: null, p_active: 'active', p_limit: 100, p_offset: 0,
       })
-      if (!supsError) {
+      if (supsError) {
+        logError('purchases:suppliers', supsError)
+      } else {
         const result = sups as unknown as PageResult<{ id: string; name: string }>
         setSuppliers((result.rows ?? []).map((s) => ({ id: s.id, name: s.name })))
       }

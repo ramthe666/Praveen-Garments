@@ -35,14 +35,12 @@ interface SupplierListRow {
   city: string | null
   state: string | null
   gstin: string | null
-  payment_terms: string | null
   notes: string | null
   is_active: boolean
   total_purchases: number
   invoices: number
   outstanding: number
   total_paid: number
-  returns_total: number
 }
 
 interface FormState {
@@ -55,13 +53,12 @@ interface FormState {
   state: string
   pincode: string
   gstin: string
-  payment_terms: string
   notes: string
 }
 
 const EMPTY_FORM: FormState = {
   name: '', contact_person: '', phone: '', email: '', city: '',
-  state: '', pincode: '', gstin: '', payment_terms: '', notes: '',
+  state: '', pincode: '', gstin: '', notes: '',
 }
 
 /**
@@ -131,7 +128,6 @@ export function SuppliersView() {
       state: row.state ?? '',
       pincode: '',
       gstin: row.gstin ?? '',
-      payment_terms: row.payment_terms ?? '',
       notes: row.notes ?? '',
     })
     setFormOpen(true)
@@ -157,7 +153,6 @@ export function SuppliersView() {
           state: form.state.trim(),
           pincode: form.pincode.trim(),
           gstin: form.gstin.trim(),
-          payment_terms: form.payment_terms.trim(),
           notes: form.notes.trim(),
         }),
       })
@@ -355,10 +350,6 @@ export function SuppliersView() {
               <div className="grid gap-2">
                 <Label htmlFor="sup-gstin">GSTIN</Label>
                 <Input id="sup-gstin" value={form.gstin} onChange={set('gstin')} maxLength={15} />
-              </div>
-              <div className="grid gap-2 sm:col-span-2">
-                <Label htmlFor="sup-terms">Payment terms</Label>
-                <Input id="sup-terms" value={form.payment_terms} onChange={set('payment_terms')} maxLength={60} placeholder="e.g. 30 days credit" />
               </div>
             </div>
             <div className="grid gap-2">
