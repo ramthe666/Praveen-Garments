@@ -113,6 +113,9 @@ export function InvoiceDocument({
       )}
 
       {/* THE DOCUMENT */}
+      {/* Screen: the sheet scrolls inside this frame on narrow phones instead
+          of panning the whole page. Print: frame is transparent (no clipping). */}
+      <div className="overflow-x-auto print:overflow-visible">
       <article
         className={cn(
           'invoice-print-area print-area mx-auto bg-white text-black shadow-sm',
@@ -370,6 +373,7 @@ export function InvoiceDocument({
           <p className="mt-1 text-neutral-500">Computer-generated invoice · {sale.sale_number}</p>
         </footer>
       </article>
+      </div>
     </div>
   )
 }

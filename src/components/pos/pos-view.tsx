@@ -273,13 +273,18 @@ export function PosView() {
       if (!v) return
       setScanning(true)
       try {
-        const { data, error } = await supabase.rpc('find_variant_by_identifier', { p_value: v })
+        // Resolve scans through pos_search: it matches barcode / QR / SKU /
+        // product code (exact matches sort first) and returns the FULL POS row
+        // — prices with product-level fallback, GST rate, HSN code and live
+        // stock. This keeps scanned lines identical to searched lines (same
+        // tax rate, same stock guard) instead of the slimmer resolver shape.
+        const { data, error } = await supabase.rpc('pos_search', { p_query: v, p_limit: 1 })
         if (error) {
           logError('pos:scan', error)
           toast.error('Lookup failed', { description: 'Could not search for the scanned item.' })
           return
         }
-        const found = data as unknown as PosVariantRow | null
+        const found = ((data as unknown as { rows: PosVariantRow[] })?.rows ?? [])[0] ?? null
         if (!found) {
           toast.error('Not found', { description: `No product matches "${v}".` })
           return
@@ -385,6 +390,7 @@ export function PosView() {
     const heldCart: HeldCart = {
       items: cart.map((i) => ({
         variant_id: i.variant_id,
+        sku: i.sku,
         quantity: i.quantity,
         discount_type: i.discount_type,
         discount_value: i.discount_value,
@@ -423,11 +429,19 @@ export function PosView() {
 
   const resumeCart = React.useCallback(
     async (held: HeldCart) => {
-      // re-resolve every variant so prices/stock are fresh; drop stale lines
+      // re-resolve every variant so prices/stock are fresh; drop stale lines.
+      // Lines are re-resolved by SKU (stored at hold time) through pos_search,
+      // which returns the full POS row — price fallbacks, GST rate, HSN and
+      // live stock. The variant_id check guards against fuzzy matches so a
+      // resumed line is always the exact product that was held.
       const resolved: CartItem[] = []
       for (const line of held.items ?? []) {
-        const { data } = await supabase.rpc('find_variant_by_identifier', { p_value: line.variant_id })
-        const found = data as unknown as PosVariantRow | null
+        const { data } = await supabase.rpc('pos_search', {
+          p_query: line.sku ?? line.variant_id,
+          p_limit: 5,
+        })
+        const rows = (data as unknown as { rows: PosVariantRow[] })?.rows ?? []
+        const found = rows.find((r) => r.variant_id === line.variant_id) ?? null
         if (!found || !found.variant_active || !found.product_active || found.selling_price == null) {
           toast.warning('One held item is no longer available', {
             description: `A line was skipped (variant removed or deactivated).`,
@@ -485,13 +499,20 @@ export function PosView() {
   // ---- keyboard shortcuts --------------------------------------------------------
   React.useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      // Ignore global shortcuts while any modal dialog is open (checkout,
+      // customer, held bills, success) so a stray F8 cannot stack a second
+      // dialog behind the one the cashier is working in.
+      const dialogOpen = document.querySelector('[role="dialog"]') !== null
       if (e.key === 'F2') {
+        if (dialogOpen) return
         e.preventDefault()
         searchRef.current?.focus()
       } else if (e.key === 'F4') {
+        if (dialogOpen) return
         e.preventDefault()
         setCustomerOpen(true)
       } else if (e.key === 'F8') {
+        if (dialogOpen) return
         e.preventDefault()
         if (cart.length > 0) setCheckoutOpen(true)
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedRow != null) {
@@ -701,7 +722,7 @@ export function PosView() {
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="relative overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-left text-xs text-muted-foreground">

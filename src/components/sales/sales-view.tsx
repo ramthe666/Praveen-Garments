@@ -153,7 +153,7 @@ export function SalesView() {
         <>
           {/* filters */}
           <div className="grid gap-2 rounded-lg border bg-card p-3 shadow-xs sm:grid-cols-2 lg:grid-cols-6">
-            <div className="relative sm:col-span-2">
+            <div className="relative sm:col-span-2 lg:col-span-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
               <Input
                 value={search}
@@ -177,7 +177,7 @@ export function SalesView() {
               aria-label="To date"
             />
             <Select value={method} onValueChange={setMethod}>
-              <SelectTrigger aria-label="Filter by payment method">
+              <SelectTrigger aria-label="Filter by payment method" className="w-full min-w-0">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -188,11 +188,10 @@ export function SalesView() {
                 ))}
               </SelectContent>
             </Select>
-            <div className="grid grid-cols-2 gap-2">
-              <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger aria-label="Filter by sale status">
-                  <SelectValue />
-                </SelectTrigger>
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger aria-label="Filter by sale status" className="w-full min-w-0">
+                <SelectValue />
+              </SelectTrigger>
                 <SelectContent>
                   {SALE_STATUSES.map((s) => (
                     <SelectItem key={s.value} value={s.value}>
@@ -201,10 +200,10 @@ export function SalesView() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={paymentStatus} onValueChange={setPaymentStatus}>
-                <SelectTrigger aria-label="Filter by payment status">
-                  <SelectValue />
-                </SelectTrigger>
+            <Select value={paymentStatus} onValueChange={setPaymentStatus}>
+              <SelectTrigger aria-label="Filter by payment status" className="w-full min-w-0">
+                <SelectValue />
+              </SelectTrigger>
                 <SelectContent>
                   {PAYMENT_STATUSES.map((s) => (
                     <SelectItem key={s.value} value={s.value}>
@@ -213,7 +212,6 @@ export function SalesView() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
           </div>
 
           {/* table */}
@@ -231,7 +229,7 @@ export function SalesView() {
                 description="Adjust the filters, or create the first sale from the POS."
               />
             ) : (
-              <div className="overflow-x-auto">
+              <div className="relative overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-left text-xs text-muted-foreground">

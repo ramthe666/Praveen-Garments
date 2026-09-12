@@ -71,6 +71,8 @@ export interface PosVariantRow {
 export interface HeldCart {
   items: Array<{
     variant_id: string
+    /** Stored at hold time so resume can re-resolve the exact variant. */
+    sku?: string | null
     quantity: number
     discount_type: 'pct' | 'fixed'
     discount_value: number

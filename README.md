@@ -47,6 +47,11 @@ never alter or drop earlier schema). Details: `supabase/migrations/README.md`.
 > `supabase/purge-phase2-test-data.sql` (NOT a migration — do not run unless
 > you want to) removes the "P2TEST" rows created by the automated verification
 > rounds by temporarily lifting the append-only ledger guards.
+>
+> `supabase/purge-phase3-test-data.sql` (also NOT a migration — optional)
+> removes the Phase 3 cloud E2E artifacts (2 test accounts, 3 test sales,
+> held bills, the test customer) the same way. Your own real sale
+> (INV-2026-000002, cashier "Praveen (Owner)") is never touched.
 
 ### 2. Recommended Supabase dashboard settings
 
