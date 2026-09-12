@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils'
 
 export type FieldDef =
   | { kind: 'text'; key: string; label: string; placeholder?: string; maxLength?: number; required?: boolean }
-  | { kind: 'number'; key: string; label: string; min?: number; max?: number }
+  | { kind: 'number'; key: string; label: string; min?: number; max?: number; description?: string }
   | { kind: 'textarea'; key: string; label: string; rows?: number; maxLength?: number }
   | {
       kind: 'select'
@@ -108,6 +108,9 @@ export function SettingsSectionForm({
                           setField(field.key, e.target.value === '' ? '' : Number(e.target.value))
                         }
                       />
+                      {field.description ? (
+                        <p className="text-xs text-muted-foreground">{field.description}</p>
+                      ) : null}
                     </div>
                   )
                 case 'textarea':

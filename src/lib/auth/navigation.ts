@@ -46,7 +46,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Operations',
     items: [
-      { label: 'Purchases', href: '/purchases', icon: Truck, permission: 'manage_purchases' },
+      { label: 'Purchases', href: '/purchases', icon: Truck, permission: 'view_purchases' },
       { label: 'Sales', href: '/sales', icon: Receipt, permission: 'view_sales' },
       { label: 'Customers', href: '/customers', icon: Users, permission: 'manage_customers' },
       { label: 'Suppliers', href: '/suppliers', icon: Store, permission: 'manage_suppliers' },
@@ -56,6 +56,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Insights',
     items: [
+      { label: 'Payments', href: '/payments', icon: CreditCard, permission: 'view_sales' },
       { label: 'Reports', href: '/reports', icon: BarChart3, permission: 'view_reports' },
     ],
   },

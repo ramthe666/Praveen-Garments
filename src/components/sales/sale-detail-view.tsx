@@ -2,8 +2,9 @@
 
 import * as React from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { ArrowLeft, Ban, Printer } from 'lucide-react'
+import { ArrowLeft, ArrowLeftRight, Ban, Printer, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -21,6 +22,8 @@ import { logError } from '@/lib/errors'
 import { useApp } from '@/components/providers/app-provider'
 import { cn } from '@/lib/utils'
 import type { Sale, SaleItem, SalePayment, StockMovement } from '@/types/database'
+import { SalesReturnDialog } from './sales-return-dialog'
+import { ExchangeDialog } from './exchange-dialog'
 
 export interface SaleMovementLite {
   id: number
@@ -50,13 +53,17 @@ export interface SaleDetailData {
  */
 export function SaleDetailView({ initial }: { initial: SaleDetailData }) {
   const { hasPermission } = useApp()
+  const router = useRouter()
   const supabase = React.useMemo(() => createClient(), [])
   const [sale, setSale] = React.useState<Sale>(initial.sale)
   const [cancelOpen, setCancelOpen] = React.useState(false)
   const [reason, setReason] = React.useState('')
   const [submitting, setSubmitting] = React.useState(false)
+  const [returnOpen, setReturnOpen] = React.useState(false)
+  const [exchangeOpen, setExchangeOpen] = React.useState(false)
 
   const canCancel = hasPermission('cancel_sale') && sale.status === 'COMPLETED'
+  const canReturn = hasPermission('process_return') && sale.status === 'COMPLETED'
 
   const cancel = React.useCallback(async () => {
     const trimmed = reason.trim()
@@ -139,6 +146,18 @@ export function SaleDetailView({ initial }: { initial: SaleDetailData }) {
               Print invoice
             </Link>
           </Button>
+          {canReturn ? (
+            <>
+              <Button variant="outline" size="sm" onClick={() => setReturnOpen(true)}>
+                <Undo2 className="size-4" aria-hidden="true" />
+                Return
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setExchangeOpen(true)}>
+                <ArrowLeftRight className="size-4" aria-hidden="true" />
+                Exchange
+              </Button>
+            </>
+          ) : null}
           {canCancel ? (
             <Button variant="outline" size="sm" className="text-destructive" onClick={() => setCancelOpen(true)}>
               <Ban className="size-4" aria-hidden="true" />
@@ -344,6 +363,21 @@ export function SaleDetailView({ initial }: { initial: SaleDetailData }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <SalesReturnDialog
+        sale={sale}
+        items={initial.items}
+        open={returnOpen}
+        onOpenChange={setReturnOpen}
+        onDone={() => router.refresh()}
+      />
+      <ExchangeDialog
+        sale={sale}
+        items={initial.items}
+        open={exchangeOpen}
+        onOpenChange={setExchangeOpen}
+        onDone={() => router.refresh()}
+      />
     </div>
   )
 }

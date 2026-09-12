@@ -13,6 +13,15 @@ atomic sales with stock deduction, split payments, credit sales, GST
 caps, held bills, invoices (A4 + 80 mm thermal), sales history and
 supervised cancellation — engine fully tested (104 database-level tests
 including the two-cashiers-one-item concurrency guarantee).
+**Phase 4**: business operations — customer accounts with dues/FIFO
+payments/advances and printable statements; supplier accounts; purchase
+orders with a DRAFT → ORDERED → PARTIALLY_RECEIVED → RECEIVED lifecycle;
+goods receiving (full or partial) with atomic stock + payable creation;
+supplier payments; purchase returns; sales returns (partial, GOOD/DAMAGED,
+refund methods, policy gates); exchanges (pay or refund the difference);
+expenses with categories + approval + attachments; and a unified payment
+history — 92 database-level tests including partial-receipt and
+parallel-payment concurrency guarantees.
 
 **Not a public SaaS** — no signup, no tenant management. One business, one Admin.
 
@@ -40,6 +49,7 @@ Open the Supabase dashboard → **SQL Editor** → new query, then run each file
 | 6 | `supabase/migrations/0006_product_images_storage.sql` | `product-images` storage bucket + policies |
 | 7 | `supabase/migrations/0007_audit_email_attribution.sql` | catalog audit trigger now also records `user_email` (polish — run after Phase 2) |
 | 8 | `supabase/migrations/0008_pos_billing.sql` | **Phase 3 POS/billing**: customers, sales/items/payments, held bills, invoice numbering, `create_sale()` atomic engine, `cancel_sale()`, POS search/config RPCs, sales history, RLS, new permissions (+ hotfix for the Phase 1 settings-audit trigger — see file header) |
+| 9 | `supabase/migrations/0009_phase4_business_operations.sql` | **Phase 4 business operations**: suppliers, purchase orders/items, purchase invoices/items, customer & supplier payments + FIFO allocations, sales returns, purchase returns, exchanges, expenses + categories, document-number counters, the atomic RPC engines for every workflow, page/detail/statement RPCs, new permissions, RLS, `expense-attachments` storage bucket |
 
 All migrations are idempotent and non-destructive (new objects only — they
 never alter or drop earlier schema). Details: `supabase/migrations/README.md`.
@@ -173,6 +183,46 @@ cd pgtest && bun run scripts/local/test-phase3.ts
   (never authoritative), and a post-sale screen that keeps the invoice
   until the next sale starts.
 
+## Phase 4 — business operations design notes
+
+- **One RPC per workflow, one transaction per RPC** — every state-changing
+  operation (receive goods, pay a supplier, return stock, exchange, approve
+  an expense, …) is a SECURITY DEFINER function that re-validates
+  permission + business rules, then writes every table it must touch in a
+  single transaction. Partial writes are impossible: any failure rolls the
+  whole operation back (verified by deliberate failure-injection tests).
+- **Purchase lifecycle** — POs are DRAFT until ordered; ordering never
+  touches stock. Goods arrive via purchase invoices (direct or against a
+  PO): only `RECEIVED`/confirmed invoices increase stock, write PURCHASE
+  ledger movements and create the supplier payable. Partial receives
+  (60 of 100, then 40 of 100) drive the PO through
+  PARTIALLY_RECEIVED → RECEIVED automatically; over-receiving is blocked
+  and duplicate supplier invoice numbers are rejected.
+- **Money flows are FIFO and capped** — customer/supplier payments
+  allocate to the oldest due bill first, refuse to exceed the outstanding
+  balance, and only allow advances when the setting is enabled (a stored
+  advance auto-applies to the next bill). Every allocation row keeps the
+  sale/invoice ↔ payment link, so no financial record is ever an orphan.
+- **Returns & exchanges obey a configurable policy** — window days,
+  original-bill requirement, manager approval, per-line quantity caps
+  (original sold minus already returned), GOOD vs DAMAGED routing
+  (damaged stock goes to the Damaged Goods location, never the sales
+  floor), refund method validation, and refund-value-equals-what-you-paid.
+  Exchanges return the old items and sell the new ones atomically,
+  collecting or refunding the difference through a real payment record.
+- **Expenses are data-driven** — categories are manageable rows, expense
+  creation is separate from approval (cashiers cannot approve), and
+  attachments land in the `expense-attachments` storage bucket with
+  type/size validation.
+- **Document numbers never collide** — every family (PO, PI, PR, SR, EX,
+  EXP, CR, SP) draws from its own `doc_number_counters` row with the same
+  row-locked increment pattern as sales invoices; prefixes are
+  configurable in Settings → Document Numbers.
+- **Unified payment history** — `payments_page` unions customer payments,
+  supplier payments, sale payments, refunds and expense payments with
+  database-side filtering and pagination; the /payments screen is the one
+  audit surface for every rupee that moved.
+
 ## Architecture map
 
 ```
@@ -230,8 +280,10 @@ pgtest/                  local Postgres engine test harness
 
 ## Phase boundary
 
-Phase 4 (loyalty, promotions engine, complex accounting, advanced supplier
-workflows, full returns/exchanges) is **not** started. The POS engine is
-ready for it: `cancel_sale` and the SALES_RETURN movement type already
-model returns at the ledger level, and sale items keep the snapshots a
-returns module will need.
+Phase 5 (loyalty, promotions engine, complex accounting, advanced
+reporting) is **not** started. Phase 4 covered business operations:
+customer/supplier accounts, the purchase-to-pay cycle, returns,
+exchanges, refunds and expenses. The engines are ready for more: every
+financial record is linked to its source document, and the movement
+ledger already models PURCHASE / SALES_RETURN / PURCHASE_RETURN /
+EXCHANGE flows at the transaction level.

@@ -63,6 +63,14 @@ async function main() {
     await root.query('alter table public.stock_balances enable trigger stock_balances_engine_guard')
     await root.query('alter table public.stock_movements enable trigger stock_movements_append_only')
     await root.query('delete from public.audit_logs')
+    await root.query(`delete from public.exchange_items_in; delete from public.exchange_items_out; delete from public.exchanges;
+    delete from public.sales_return_items; delete from public.sales_returns;
+    delete from public.customer_payment_allocations; delete from public.customer_payments;
+    delete from public.supplier_payment_allocations; delete from public.supplier_payments;
+    delete from public.purchase_return_items; delete from public.purchase_returns;
+    delete from public.purchase_invoice_items; delete from public.purchase_invoices;
+    delete from public.purchase_order_items; delete from public.purchase_orders;
+    delete from public.expenses; delete from public.suppliers;`)
     await root.query('delete from public.product_variants')
     await root.query('delete from public.products')
     await root.query('delete from public.categories')

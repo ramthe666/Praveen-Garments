@@ -23,6 +23,11 @@ export type AppPermission =
   | 'cancel_sale'
   | 'process_return'
   | 'manage_purchases'
+  | 'view_purchases'
+  | 'record_customer_payment'
+  | 'record_supplier_payment'
+  | 'approve_expense'
+  | 'approve_return'
   | 'manage_customers'
   | 'manage_suppliers'
   | 'manage_expenses'
@@ -65,6 +70,26 @@ export type AuditAction =
   | 'bill_held'
   | 'bill_resumed'
   | 'bill_discarded'
+  | 'customer_created'
+  | 'customer_updated'
+  | 'supplier_created'
+  | 'supplier_updated'
+  | 'customer_payment_recorded'
+  | 'customer_advance_applied'
+  | 'supplier_payment_recorded'
+  | 'purchase_order_created'
+  | 'purchase_order_updated'
+  | 'purchase_order_cancelled'
+  | 'purchase_received'
+  | 'purchase_return_processed'
+  | 'sales_return_processed'
+  | 'exchange_processed'
+  | 'expense_created'
+  | 'expense_updated'
+  | 'expense_approved'
+  | 'expense_cancelled'
+  | 'category_created'
+  | 'category_updated'
 
 export type Branch = {
   id: string
@@ -555,11 +580,28 @@ export type AppSettings = {
   }
   payments: {
     methods: string[]
+    allow_advance_payments?: boolean
   }
   returns: {
     window_days: number
     require_invoice: boolean
     restock_items: boolean
+    enabled?: boolean
+    exchange_enabled?: boolean
+    refund_enabled?: boolean
+    damaged_to_location?: boolean
+    manager_approval?: boolean
+    max_return_qty_pct?: number
+  }
+  numbering?: {
+    purchase_order_prefix?: string
+    purchase_invoice_prefix?: string
+    purchase_return_prefix?: string
+    sales_return_prefix?: string
+    exchange_prefix?: string
+    expense_prefix?: string
+    customer_receipt_prefix?: string
+    supplier_payment_prefix?: string
   }
 }
 
@@ -825,6 +867,141 @@ export type Database = {
         Returns: Json
       }
       sale_detail: { Args: { p_sale_id: string }; Returns: Json }
+      customers_page: {
+        Args: {
+          p_search?: string | null
+          p_type?: string | null
+          p_active?: string | null
+          p_limit?: number | null
+          p_offset?: number | null
+        }
+        Returns: Json
+      }
+      customer_detail: { Args: { p_customer_id: string }; Returns: Json }
+      customer_statement: {
+        Args: { p_customer_id: string; p_from?: string | null; p_to?: string | null }
+        Returns: Json
+      }
+      record_customer_payment: {
+        Args: {
+          p_customer_id: string
+          p_amount: number
+          p_method: string
+          p_reference?: string | null
+          p_notes?: string | null
+          p_payment_date?: string | null
+        }
+        Returns: Json
+      }
+      apply_customer_advance: { Args: { p_customer_id: string }; Returns: Json }
+      suppliers_page: {
+        Args: {
+          p_search?: string | null
+          p_active?: string | null
+          p_limit?: number | null
+          p_offset?: number | null
+        }
+        Returns: Json
+      }
+      supplier_detail: { Args: { p_supplier_id: string }; Returns: Json }
+      record_supplier_payment: {
+        Args: {
+          p_supplier_id: string
+          p_amount: number
+          p_method: string
+          p_reference?: string | null
+          p_notes?: string | null
+          p_payment_date?: string | null
+        }
+        Returns: Json
+      }
+      purchase_orders_page: {
+        Args: {
+          p_search?: string | null
+          p_supplier?: string | null
+          p_status?: string | null
+          p_date_from?: string | null
+          p_date_to?: string | null
+          p_limit?: number | null
+          p_offset?: number | null
+        }
+        Returns: Json
+      }
+      purchase_order_detail: { Args: { p_po_id: string }; Returns: Json }
+      purchase_invoices_page: {
+        Args: {
+          p_search?: string | null
+          p_supplier?: string | null
+          p_status?: string | null
+          p_payment_status?: string | null
+          p_date_from?: string | null
+          p_date_to?: string | null
+          p_limit?: number | null
+          p_offset?: number | null
+        }
+        Returns: Json
+      }
+      purchase_invoice_detail: { Args: { p_invoice_id: string }; Returns: Json }
+      purchase_returns_page: {
+        Args: {
+          p_search?: string | null
+          p_supplier?: string | null
+          p_date_from?: string | null
+          p_date_to?: string | null
+          p_limit?: number | null
+          p_offset?: number | null
+        }
+        Returns: Json
+      }
+      sales_returns_page: {
+        Args: {
+          p_search?: string | null
+          p_customer?: string | null
+          p_date_from?: string | null
+          p_date_to?: string | null
+          p_limit?: number | null
+          p_offset?: number | null
+        }
+        Returns: Json
+      }
+      exchanges_page: {
+        Args: {
+          p_search?: string | null
+          p_customer?: string | null
+          p_date_from?: string | null
+          p_date_to?: string | null
+          p_limit?: number | null
+          p_offset?: number | null
+        }
+        Returns: Json
+      }
+      expenses_page: {
+        Args: {
+          p_search?: string | null
+          p_category?: string | null
+          p_status?: string | null
+          p_method?: string | null
+          p_date_from?: string | null
+          p_date_to?: string | null
+          p_limit?: number | null
+          p_offset?: number | null
+        }
+        Returns: Json
+      }
+      payments_page: {
+        Args: {
+          p_search?: string | null
+          p_source?: string | null
+          p_method?: string | null
+          p_date_from?: string | null
+          p_date_to?: string | null
+          p_min?: number | null
+          p_max?: number | null
+          p_limit?: number | null
+          p_offset?: number | null
+        }
+        Returns: Json
+      }
     }
     Enums: {
       user_role: UserRole
@@ -833,4 +1010,281 @@ export type Database = {
     }
     CompositeTypes: Record<string, never>
   }
+}
+
+// ---------------------------------------------------------------------------
+// Phase 4 domain types (customers, suppliers, purchases, returns,
+// exchanges, expenses). All money fields arrive as numbers via the page RPCs
+// (PostgREST jsonb); direct table reads give numeric-as-string, hence
+// Number() at the call sites.
+// ---------------------------------------------------------------------------
+
+export type CustomerType = 'retail' | 'wholesale'
+
+export type CustomerRecord = {
+  id: string
+  name: string
+  phone: string | null
+  alt_phone: string | null
+  email: string | null
+  address: string | null
+  city: string | null
+  state: string | null
+  pincode: string | null
+  gstin: string | null
+  customer_type: CustomerType | string
+  credit_limit: number
+  notes: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type SupplierRecord = {
+  id: string
+  name: string
+  contact_person: string | null
+  phone: string | null
+  email: string | null
+  address: string | null
+  city: string | null
+  state: string | null
+  pincode: string | null
+  gstin: string | null
+  payment_terms: string | null
+  notes: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type POStatus = 'DRAFT' | 'ORDERED' | 'PARTIALLY_RECEIVED' | 'RECEIVED' | 'CANCELLED'
+
+export type PurchaseOrder = {
+  id: string
+  po_number: string
+  supplier_id: string
+  supplier_name: string
+  location_id: string
+  location_name: string
+  order_date: string
+  expected_date: string | null
+  status: POStatus | string
+  subtotal: number
+  discount_total: number
+  tax_total: number
+  grand_total: number
+  notes: string | null
+  created_by: string | null
+  created_by_name: string | null
+  item_count: number
+  unit_count: number
+}
+
+export type POItem = {
+  id: string
+  po_id: string
+  variant_id: string | null
+  line_no: number
+  product_name: string
+  sku: string
+  size_name: string | null
+  color_name: string | null
+  quantity: number
+  unit_cost: number
+  discount_amount: number
+  gst_rate: number
+  tax_amount: number
+  line_total: number
+  received_quantity: number
+  pending_quantity?: number
+}
+
+export type InvoiceStatus = 'DRAFT' | 'RECEIVED' | 'CANCELLED'
+
+export type PurchaseInvoice = {
+  id: string
+  invoice_number: string
+  supplier_id: string
+  supplier_name: string
+  po_id: string | null
+  po_number: string | null
+  supplier_invoice_no: string | null
+  supplier_invoice_date: string | null
+  location_id: string
+  location_name: string
+  invoice_date: string
+  status: InvoiceStatus | string
+  subtotal: number
+  discount_total: number
+  tax_total: number
+  grand_total: number
+  paid_amount: number
+  due_amount: number
+  payment_status: PaymentStatus | string
+  tax_mode: TaxMode | string
+  inter_state: boolean
+  notes: string | null
+  received_at: string | null
+  received_by_name: string | null
+  created_by_name: string | null
+  item_count: number
+  unit_count: number
+}
+
+export type PurchaseInvoiceItem = {
+  id: string
+  invoice_id: string
+  po_item_id: string | null
+  variant_id: string | null
+  line_no: number
+  product_name: string
+  sku: string
+  size_name: string | null
+  color_name: string | null
+  quantity: number
+  unit_cost: number
+  discount_amount: number
+  gst_rate: number
+  tax_amount: number
+  line_total: number
+  returned_quantity: number
+}
+
+export type CustomerPayment = {
+  id: string
+  receipt_number: string
+  customer_id: string
+  customer_name: string
+  amount: number
+  allocated_amount: number
+  method: string
+  reference: string | null
+  notes: string | null
+  recorded_by_name: string | null
+  recorded_at: string
+}
+
+export type SupplierPayment = {
+  id: string
+  payment_number: string
+  supplier_id: string
+  supplier_name: string
+  amount: number
+  allocated_amount: number
+  method: string
+  reference: string | null
+  notes: string | null
+  recorded_by_name: string | null
+  recorded_at: string
+}
+
+export type ReturnCondition = 'GOOD' | 'DAMAGED'
+
+export type SalesReturn = {
+  id: string
+  return_number: string
+  sale_id: string
+  sale_number: string
+  customer_id: string | null
+  customer_name: string | null
+  return_date: string
+  reason: string
+  refund_method: string | null
+  refund_amount: number
+  applied_to_due: number
+  refunded_by_name: string | null
+  notes: string | null
+  item_count: number
+  units: number
+}
+
+export type PurchaseReturn = {
+  id: string
+  return_number: string
+  purchase_invoice_id: string
+  invoice_number: string
+  supplier_id: string
+  supplier_name: string
+  return_date: string
+  reason: string
+  subtotal: number
+  tax_total: number
+  grand_total: number
+  applied_to_due: number
+  created_by_name: string | null
+  notes: string | null
+  item_count: number
+  units: number
+}
+
+export type Exchange = {
+  id: string
+  exchange_number: string
+  sale_id: string
+  sale_number: string
+  customer_id: string | null
+  customer_name: string | null
+  exchange_date: string
+  reason: string
+  return_value: number
+  issue_value: number
+  difference_amount: number
+  payment_method: string | null
+  payment_amount: number
+  payment_reference: string | null
+  created_by_name: string | null
+  item_count: number
+  units_in: number
+  units_out: number
+}
+
+export type ExpenseStatus = 'PENDING' | 'APPROVED' | 'CANCELLED'
+
+export type ExpenseCategory = {
+  id: string
+  name: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type Expense = {
+  id: string
+  expense_number: string
+  category_id: string
+  category_name: string
+  description: string
+  amount: number
+  method: string
+  location_id: string | null
+  location_name: string | null
+  expense_date: string
+  notes: string | null
+  status: ExpenseStatus | string
+  approved_at: string | null
+  approved_by_name: string | null
+  cancelled_at: string | null
+  cancel_reason: string | null
+  created_by_name: string | null
+  created_at: string
+}
+
+export type PaymentLedgerRow = {
+  source: 'customer_payment' | 'supplier_payment' | 'sale_payment' | 'refund' | 'expense'
+  source_id: string
+  doc_number: string
+  entry_at: string
+  method: string
+  amount: number
+  reference: string | null
+  user_name: string | null
+  party_name: string | null
+  notes: string | null
+}
+
+export type PageResult<T> = {
+  rows: T[]
+  total: number
+  total_is_estimate?: boolean
 }

@@ -145,7 +145,7 @@ export function SalesView() {
       {setupNeeded ? (
         <div className="rounded-lg border bg-card p-6 text-center shadow-xs">
           <h2 className="text-lg font-semibold">Sales database not ready</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 break-words text-sm text-muted-foreground">
             Apply migration 0008 (supabase/migrations/0008_pos_billing.sql) in the Supabase SQL Editor.
           </p>
         </div>
