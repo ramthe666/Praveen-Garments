@@ -30,15 +30,15 @@ export function EmptyState({ icon, title, description, action, className, compac
       {icon ? (
         <div
           className={cn(
-            'flex items-center justify-center rounded-full bg-accent text-accent-foreground [&>svg]:size-5',
-            compact ? 'size-8 [&>svg]:size-4' : 'size-12 [&>svg]:size-6'
+            'flex items-center justify-center rounded-2xl bg-accent text-accent-foreground [&>svg]:size-5',
+            compact ? 'size-9 [&>svg]:size-4' : 'size-14 [&>svg]:size-6'
           )}
           aria-hidden="true"
         >
           {icon}
         </div>
       ) : null}
-      <p className={cn('font-medium text-foreground', compact ? 'text-sm' : 'text-[15px]')}>{title}</p>
+      <p className={cn('font-semibold tracking-tight text-foreground', compact ? 'text-sm' : 'text-[15px]')}>{title}</p>
       {description ? (
         <p className={cn('max-w-md text-muted-foreground', compact ? 'text-xs' : 'text-sm')}>
           {description}

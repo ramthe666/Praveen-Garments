@@ -33,7 +33,7 @@ export function AppLogo({
         alt={`${companyName ?? 'Company'} logo`}
         width={size}
         height={size}
-        className={`shrink-0 rounded-md object-contain ${className ?? ''}`}
+        className={`shrink-0 rounded-xl object-contain ${className ?? ''}`}
         priority
         unoptimized
       />
@@ -45,7 +45,7 @@ export function AppLogo({
       aria-label={`${companyName ?? 'Company'} logo`}
       role="img"
       style={{ width: size, height: size, fontSize: Math.max(11, size * 0.38) }}
-      className={`flex shrink-0 select-none items-center justify-center rounded-md bg-primary font-semibold tracking-wide text-primary-foreground ${className ?? ''}`}
+      className={`flex shrink-0 select-none items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 font-semibold tracking-wide text-white shadow-xs ${className ?? ''}`}
     >
       {initials || 'PG'}
     </span>

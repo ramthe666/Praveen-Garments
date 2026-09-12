@@ -24,34 +24,36 @@ export default async function LoginPage() {
   return (
     <div className="w-full">
       <div className="mb-6 flex flex-col items-center gap-3 text-center">
-        <AppLogo logoUrl={branding?.logo_url} companyName={companyName} size={44} />
+        <AppLogo logoUrl={branding?.logo_url} companyName={companyName} size={48} className="rounded-2xl" />
         <div>
-          <h1 className="text-lg font-semibold tracking-tight text-foreground">{companyName}</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
+          <h1 className="text-xl font-bold tracking-tight text-foreground">{companyName}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Billing &amp; Inventory workspace
           </p>
         </div>
       </div>
 
-      {/* LoginForm reads search params (auth notices, next path) — it must sit
-          inside a Suspense boundary so this page can be prerendered. */}
-      <Suspense
-        fallback={
-          <div
-            className="rounded-lg border bg-card p-6 shadow-sm"
-            aria-busy="true"
-            aria-label="Loading sign-in form"
-          >
-            <div className="h-5 w-24 animate-pulse rounded bg-muted" />
-            <div className="mt-4 h-4 w-40 animate-pulse rounded bg-muted" />
-            <div className="mt-6 h-9 w-full animate-pulse rounded bg-muted" />
-            <div className="mt-4 h-9 w-full animate-pulse rounded bg-muted" />
-            <div className="mt-6 h-9 w-full animate-pulse rounded bg-muted" />
-          </div>
-        }
-      >
-        <LoginForm companyName={companyName} />
-      </Suspense>
+      <div className="shadow-soft rounded-3xl border border-border/70 bg-card p-6 sm:p-7">
+        {/* LoginForm reads search params (auth notices, next path) — it must sit
+            inside a Suspense boundary so this page can be prerendered. */}
+        <Suspense
+          fallback={
+            <div
+              className="space-y-4"
+              aria-busy="true"
+              aria-label="Loading sign-in form"
+            >
+              <div className="h-5 w-24 animate-pulse rounded-full bg-muted" />
+              <div className="h-4 w-40 animate-pulse rounded-full bg-muted" />
+              <div className="mt-6 h-9 w-full animate-pulse rounded-full bg-muted" />
+              <div className="mt-4 h-9 w-full animate-pulse rounded-full bg-muted" />
+              <div className="mt-6 h-10 w-full animate-pulse rounded-full bg-muted" />
+            </div>
+          }
+        >
+          <LoginForm companyName={companyName} />
+        </Suspense>
+      </div>
 
       <p className="mt-6 text-center text-xs leading-relaxed text-muted-foreground">
         Private application — authorised staff only.

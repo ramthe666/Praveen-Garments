@@ -42,6 +42,8 @@ export function CheckoutDialog({
   onOpenChange,
   items,
   summary,
+  billDiscountType,
+  billDiscountValue,
   customer,
   config,
   locationName,
@@ -52,6 +54,8 @@ export function CheckoutDialog({
   onOpenChange: (open: boolean) => void
   items: CartItem[]
   summary: CheckoutSummary
+  billDiscountType: 'pct' | 'fixed'
+  billDiscountValue: number
   customer: PosCustomer | null
   config: PosConfig
   locationName: string | null
@@ -151,8 +155,12 @@ export function CheckoutDialog({
             discount_value: i.discount_value,
           })),
           customer_id: customer?.id ?? null,
-          bill_discount_type: 'pct', // the bill discount is already folded into summary by the parent
-          bill_discount_value: 0,
+          // the server re-computes the bill from the raw lines — it MUST receive
+          // the same bill discount the cashier sees in the summary, otherwise the
+          // payable amount diverges (client ₹911 vs server ₹959) and the sale is
+          // rejected as underpaid.
+          bill_discount_type: billDiscountType,
+          bill_discount_value: billDiscountValue,
           payments: payments.map((p) => ({
             method: p.method,
             amount: p.amount,
@@ -180,7 +188,7 @@ export function CheckoutDialog({
     } finally {
       setSubmitting(false)
     }
-  }, [items, payments, due, creditEnabled, customer, creditTotal, notes, onCompleted, onOpenChange])
+  }, [items, payments, due, creditEnabled, customer, creditTotal, notes, billDiscountType, billDiscountValue, onCompleted, onOpenChange])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

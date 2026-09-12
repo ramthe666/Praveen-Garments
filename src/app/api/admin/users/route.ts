@@ -22,7 +22,15 @@ const createSchema = z.object({
     'purchase_manager',
     'accountant',
   ]),
-  phone: z.string().trim().max(20).optional().or(z.literal('')),
+  // Accept JSON null as well as '' (clients normalise empty to either).
+  phone: z
+    .string()
+    .trim()
+    .max(20)
+    .optional()
+    .or(z.literal(''))
+    .or(z.null())
+    .transform((v) => v ?? ''),
 })
 
 /**

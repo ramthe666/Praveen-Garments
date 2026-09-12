@@ -530,7 +530,7 @@ export function PosView() {
   // ---- render -----------------------------------------------------------------
   if (configError) {
     return (
-      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 rounded-lg border bg-card p-8 text-center">
+      <div className="shadow-soft flex min-h-[50vh] flex-col items-center justify-center gap-3 rounded-2xl border border-border/70 bg-card p-8 text-center">
         <TriangleAlert className="size-10 text-destructive" aria-hidden="true" />
         <h2 className="text-lg font-semibold">POS unavailable</h2>
         <p className="max-w-md text-sm text-muted-foreground">{configError}</p>
@@ -592,7 +592,7 @@ export function PosView() {
         {/* LEFT: scanner + search + cart */}
         <div className="min-w-0 space-y-4">
           {/* scanner input */}
-          <div className="rounded-lg border bg-card p-4 shadow-xs">
+          <div className="shadow-soft rounded-2xl border border-border/70 bg-card p-4">
             <label htmlFor="pos-scanner" className="flex items-center gap-2 text-sm font-medium">
               <ScanBarcode className="size-4 text-muted-foreground" aria-hidden="true" />
               Scanner input
@@ -621,7 +621,7 @@ export function PosView() {
           </div>
 
           {/* product search */}
-          <div className="rounded-lg border bg-card p-4 shadow-xs">
+          <div className="shadow-soft rounded-2xl border border-border/70 bg-card p-4">
             <label htmlFor="pos-search" className="flex items-center gap-2 text-sm font-medium">
               <Search className="size-4 text-muted-foreground" aria-hidden="true" />
               Product search
@@ -655,7 +655,7 @@ export function PosView() {
                 <Skeleton className="h-10 w-full" />
               </div>
             ) : results.length > 0 ? (
-              <ul className="thin-scrollbar mt-2 max-h-64 divide-y overflow-y-auto rounded-md border" role="listbox" aria-label="Product search results">
+              <ul className="thin-scrollbar mt-2 space-y-1.5 max-h-72 overflow-y-auto" role="listbox" aria-label="Product search results">
                 {results.map((row) => {
                   const out = row.total_available <= 0 && !allowNegative
                   return (
@@ -671,7 +671,7 @@ export function PosView() {
                           setResults([])
                           scanRef.current?.focus()
                         }}
-                        className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-accent focus-visible:bg-accent focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex w-full items-center justify-between gap-3 rounded-xl border border-border/60 bg-card px-3 py-2.5 text-left text-sm shadow-xs transition-all hover:border-primary/40 hover:bg-accent/60 focus-visible:border-primary/40 focus-visible:bg-accent/60 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border/60 disabled:hover:bg-card"
                       >
                         <span className="min-w-0 flex-1">
                           <span className="block truncate font-medium">{row.product_name}</span>
@@ -680,12 +680,14 @@ export function PosView() {
                           </span>
                         </span>
                         <span className="shrink-0 text-right">
-                          <span className="block tabular-nums font-medium">{formatMoney(row.selling_price)}</span>
+                          <span className="block tabular-nums font-semibold">{formatMoney(row.selling_price)}</span>
                           <span className={`block text-xs tabular-nums ${row.total_available <= 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
                             {out ? 'Out of stock' : `${row.total_available} in stock`}
                           </span>
                         </span>
-                        <Plus className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
+                          <Plus className="size-4" aria-hidden="true" />
+                        </span>
                       </button>
                     </li>
                   )
@@ -697,7 +699,7 @@ export function PosView() {
           </div>
 
           {/* cart */}
-          <div className="rounded-lg border bg-card shadow-xs">
+          <div className="shadow-soft rounded-2xl border border-border/70 bg-card">
             <div className="flex items-center justify-between border-b px-4 py-3">
               <h2 className="flex items-center gap-2 text-sm font-medium">
                 <ShoppingCart className="size-4 text-muted-foreground" aria-hidden="true" />
@@ -854,7 +856,7 @@ export function PosView() {
 
         {/* RIGHT: customer, totals, actions */}
         <div className="space-y-4">
-          <div className="rounded-lg border bg-card p-4 shadow-xs">
+          <div className="shadow-soft rounded-2xl border border-border/70 bg-card p-4">
             <h2 className="flex items-center gap-2 text-sm font-medium">
               <UserRound className="size-4 text-muted-foreground" aria-hidden="true" />
               Customer
@@ -901,7 +903,7 @@ export function PosView() {
           </div>
 
           {canDiscount ? (
-            <div className="rounded-lg border bg-card p-4 shadow-xs">
+            <div className="shadow-soft rounded-2xl border border-border/70 bg-card p-4">
               <h2 className="text-sm font-medium">Bill discount</h2>
               <div className="mt-2 flex items-center gap-2">
                 <Input
@@ -938,7 +940,7 @@ export function PosView() {
             </div>
           ) : null}
 
-          <div className="space-y-2 rounded-lg border bg-card p-4 shadow-xs">
+          <div className="space-y-2 shadow-soft rounded-2xl border border-border/70 bg-card p-4">
             <h2 className="text-sm font-medium">Bill summary</h2>
             <div className="space-y-1.5 text-sm">
               <Row label="Subtotal" value={formatMoney(bill.subtotal + bill.itemDiscountTotal)} />
@@ -1005,6 +1007,8 @@ export function PosView() {
         onOpenChange={setCheckoutOpen}
         items={cart}
         summary={bill}
+        billDiscountType={billDiscountType}
+        billDiscountValue={billDiscountValue}
         customer={customer}
         config={config}
         locationName={config.locations.find((l) => l.id === locationId)?.name ?? null}

@@ -41,7 +41,7 @@ export function SidebarNav({
                 {group.label}
               </p>
             )}
-            <ul className="space-y-0.5">
+            <ul className="space-y-1">
               {visibleItems.map((item) => {
                 const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
                 const Icon = item.icon
@@ -53,20 +53,14 @@ export function SidebarNav({
                       aria-current={active ? 'page' : undefined}
                       title={collapsed ? item.label : undefined}
                       className={cn(
-                        'group relative flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13.5px] font-medium outline-none transition-colors',
+                        'group relative flex items-center gap-2.5 rounded-full px-3 py-2 text-[13.5px] font-medium outline-none transition-all',
                         'focus-visible:ring-2 focus-visible:ring-ring/60',
                         collapsed && 'justify-center px-0',
                         active
-                          ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                          : 'text-sidebar-foreground hover:bg-accent/60 hover:text-foreground'
+                          ? 'bg-primary text-primary-foreground shadow-xs'
+                          : 'text-sidebar-foreground hover:bg-accent hover:text-accent-foreground'
                       )}
                     >
-                      {active ? (
-                        <span
-                          aria-hidden="true"
-                          className="absolute inset-y-1.5 left-0 w-[3px] rounded-full bg-primary"
-                        />
-                      ) : null}
                       <Icon className="size-[17px] shrink-0" aria-hidden="true" />
                       {!collapsed ? <span className="min-w-0 truncate">{item.label}</span> : null}
                       {collapsed ? (

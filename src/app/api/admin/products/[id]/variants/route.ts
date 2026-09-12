@@ -12,16 +12,28 @@ const priceSchema = z
   .transform((v) => (v === '' || v === null ? null : typeof v === 'string' ? Number(v) : v))
 
 const variantSchema = z.object({
-  sku: z.string().trim().max(60).optional().or(z.literal('')),
-  size_id: z.string().uuid().optional().or(z.literal('')).transform((v) => v || null),
-  color_id: z.string().uuid().optional().or(z.literal('')).transform((v) => v || null),
-  barcode: z.string().trim().regex(/^\d{8,14}$/, 'Barcode must be 8-14 digits.').optional().or(z.literal('')),
+  // The variant dialogs serialise empty optional fields as JSON null —
+  // accepted here and normalised to '' (identical downstream semantics:
+  // the create_product_variants RPC applies nullif(trim(...))).
+  sku: z.string().trim().max(60).optional().or(z.literal('')).or(z.null()).transform((v) => v ?? ''),
+  size_id: z.string().uuid().optional().or(z.literal('')).or(z.null()).transform((v) => v || null),
+  color_id: z.string().uuid().optional().or(z.literal('')).or(z.null()).transform((v) => v || null),
+  barcode: z
+    .string()
+    .trim()
+    .regex(/^\d{8,14}$/, 'Barcode must be 8-14 digits.')
+    .optional()
+    .or(z.literal(''))
+    .or(z.null())
+    .transform((v) => v ?? ''),
   qr_identifier: z
     .string()
     .trim()
     .regex(/^[A-Za-z0-9_-]{4,64}$/, 'QR identifier must be 4-64 letters, digits, dashes or underscores.')
     .optional()
-    .or(z.literal('')),
+    .or(z.literal(''))
+    .or(z.null())
+    .transform((v) => v ?? ''),
   generate_barcode: z.boolean().optional(),
   generate_qr: z.boolean().optional(),
   cost_price: priceSchema.optional(),

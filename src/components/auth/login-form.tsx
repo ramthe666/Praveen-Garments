@@ -92,7 +92,7 @@ export function LoginForm({ companyName }: { companyName: string }) {
   }
 
   return (
-    <div className="rounded-lg border bg-card p-6 shadow-sm">
+    <div>
       <h2 className="text-base font-semibold text-foreground">Sign in</h2>
       <p className="mt-0.5 text-sm text-muted-foreground">Use your work email and password.</p>
 

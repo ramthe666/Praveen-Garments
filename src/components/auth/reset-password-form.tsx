@@ -66,7 +66,7 @@ export function ResetPasswordForm() {
   }
 
   return (
-    <div className="rounded-lg border bg-card p-6 shadow-sm">
+    <div className="shadow-soft rounded-3xl border border-border/70 bg-card p-6 sm:p-7">
       {error ? (
         <div className="mb-4">
           <Alert variant="destructive" role="alert">

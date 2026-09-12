@@ -55,14 +55,49 @@ export async function rpcAsSession<T>(
 /**
  * Translate a create_sale / cancel_sale / hold-bill error into a
  * cashier-friendly message. The RPCs raise deliberate, user-facing text
- * (often with stable prefixes) — pass those through; fall back to a generic
- * message otherwise (never leak SQL internals).
+ * with a stable ALL_CAPS code prefix ("CREDIT_NOT_ENABLED: …") — the code
+ * is for logs/support, the human sentence after it is what the cashier
+ * sees. Unknown errors fall back to a generic message (never leak SQL
+ * internals).
  */
 export function posErrorMessage(error: unknown, fallback: string): string {
   const e = error as { message?: string; code?: string }
-  const message = typeof e?.message === 'string' ? e.message : ''
+  const message = typeof e?.message === 'string' ? e.message.trim() : ''
 
-  const knownPrefixes = [
+  if (!message) return fallback
+
+  // "SOME_CODE: human sentence" → show only the human sentence, capitalised.
+  const coded = message.match(/^([A-Z][A-Z0-9_]+):\s+(.+)$/)
+  if (coded && RPC_CODE_PREFIXES.has(coded[1])) {
+    const human = coded[2].trim()
+    return human.charAt(0).toUpperCase() + human.slice(1)
+  }
+
+  if (knownPrefixes.some((p) => message.startsWith(p))) {
+    return message
+  }
+  return fallback
+}
+
+const RPC_CODE_PREFIXES = new Set([
+  'INSUFFICIENT_STOCK',
+  'PRICE_OVERRIDE_NOT_ALLOWED',
+  'DISCOUNT_NOT_ALLOWED',
+  'DISCOUNT_LIMIT',
+  'CREDIT_NOT_ENABLED',
+  'CREDIT_REQUIRES_CUSTOMER',
+  'CREDIT_MISMATCH',
+  'CUSTOMER_REQUIRED',
+  'PAYMENT_METHOD_DISABLED',
+  'PAYMENT_EXCEEDS_TOTAL',
+  'CASH_RECEIVED_LESS',
+  'NO_SELLING_PRICE',
+  'VARIANT_NOT_FOUND',
+  'VARIANT_INACTIVE',
+  'PRODUCT_INACTIVE',
+])
+
+const knownPrefixes = [
     'INSUFFICIENT_STOCK',
     'PRICE_OVERRIDE_NOT_ALLOWED',
     'DISCOUNT_NOT_ALLOWED',
@@ -102,8 +137,3 @@ export function posErrorMessage(error: unknown, fallback: string): string {
     'This held bill',
     'Nothing to hold',
   ]
-  if (knownPrefixes.some((p) => message.startsWith(p))) {
-    return message
-  }
-  return fallback
-}

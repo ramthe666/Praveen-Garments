@@ -14,16 +14,28 @@ const priceSchema = z
   .transform((v) => (v === '' || v === null ? null : typeof v === 'string' ? Number(v) : v))
 
 const variantSchema = z.object({
-  sku: z.string().trim().max(60).optional().or(z.literal('')),
-  size_id: z.string().uuid().optional().or(z.literal('')).transform((v) => v || null),
-  color_id: z.string().uuid().optional().or(z.literal('')).transform((v) => v || null),
-  barcode: z.string().trim().regex(/^\d{8,14}$/, 'Barcode must be 8-14 digits.').optional().or(z.literal('')),
+  // NOTE: the product form serialises empty optional fields as JSON null —
+  // null is accepted and normalised to the exact same '' semantics the
+  // database RPCs already apply (nullif(trim(...))).
+  sku: z.string().trim().max(60).optional().or(z.literal('')).or(z.null()).transform((v) => v ?? ''),
+  size_id: z.string().uuid().optional().or(z.literal('')).or(z.null()).transform((v) => v || null),
+  color_id: z.string().uuid().optional().or(z.literal('')).or(z.null()).transform((v) => v || null),
+  barcode: z
+    .string()
+    .trim()
+    .regex(/^\d{8,14}$/, 'Barcode must be 8-14 digits.')
+    .optional()
+    .or(z.literal(''))
+    .or(z.null())
+    .transform((v) => v ?? ''),
   qr_identifier: z
     .string()
     .trim()
     .regex(/^[A-Za-z0-9_-]{4,64}$/, 'QR identifier must be 4-64 letters, digits, dashes or underscores.')
     .optional()
-    .or(z.literal('')),
+    .or(z.literal(''))
+    .or(z.null())
+    .transform((v) => v ?? ''),
   generate_barcode: z.boolean().optional(),
   generate_qr: z.boolean().optional(),
   cost_price: priceSchema.optional(),
@@ -34,22 +46,24 @@ const variantSchema = z.object({
 
 const createSchema = z.object({
   name: z.string().trim().min(1, 'Enter the product name.').max(200),
-  product_code: z.string().trim().max(40).optional().or(z.literal('')).transform((v) => v || null),
+  // The form sends JSON null for every empty optional field — accept it and
+  // normalise exactly like '' (the transform chains already do v || null).
+  product_code: z.string().trim().max(40).optional().or(z.literal('')).or(z.null()).transform((v) => v || null),
   category_id: z.string().uuid('Select a category.'),
-  subcategory_id: z.string().uuid().optional().or(z.literal('')).transform((v) => v || null),
-  brand_id: z.string().uuid().optional().or(z.literal('')).transform((v) => v || null),
-  collection: z.string().trim().max(80).optional().or(z.literal('')).transform((v) => v || null),
-  gender: z.enum(['men', 'women', 'unisex', 'boys', 'girls', 'kids']).optional().or(z.literal('')).transform((v) => v || null),
-  fabric: z.string().trim().max(80).optional().or(z.literal('')).transform((v) => v || null),
-  pattern: z.string().trim().max(80).optional().or(z.literal('')).transform((v) => v || null),
-  description: z.string().max(2000).optional().or(z.literal('')).transform((v) => v || null),
-  hsn_code: z.string().trim().regex(/^\d{4,8}$/, 'HSN/SAC must be 4-8 digits.').optional().or(z.literal('')).transform((v) => v || null),
+  subcategory_id: z.string().uuid().optional().or(z.literal('')).or(z.null()).transform((v) => v || null),
+  brand_id: z.string().uuid().optional().or(z.literal('')).or(z.null()).transform((v) => v || null),
+  collection: z.string().trim().max(80).optional().or(z.literal('')).or(z.null()).transform((v) => v || null),
+  gender: z.enum(['men', 'women', 'unisex', 'boys', 'girls', 'kids']).optional().or(z.literal('')).or(z.null()).transform((v) => v || null),
+  fabric: z.string().trim().max(80).optional().or(z.literal('')).or(z.null()).transform((v) => v || null),
+  pattern: z.string().trim().max(80).optional().or(z.literal('')).or(z.null()).transform((v) => v || null),
+  description: z.string().max(2000).optional().or(z.literal('')).or(z.null()).transform((v) => v || null),
+  hsn_code: z.string().trim().regex(/^\d{4,8}$/, 'HSN/SAC must be 4-8 digits.').optional().or(z.literal('')).or(z.null()).transform((v) => v || null),
   gst_rate: z.union([z.number().min(0).max(100), z.literal(''), z.null()]).optional().transform((v) => (v === '' || v === null || v === undefined ? null : Number(v))),
   mrp: priceSchema.optional(),
   cost_price: priceSchema.optional(),
   selling_price: priceSchema.optional(),
   wholesale_price: priceSchema.optional(),
-  image_path: z.string().max(300).optional().or(z.literal('')).transform((v) => v || null),
+  image_path: z.string().max(300).optional().or(z.literal('')).or(z.null()).transform((v) => v || null),
   variants: z.array(variantSchema).max(200, 'A product can have at most 200 variants at once.').default([]),
 })
 

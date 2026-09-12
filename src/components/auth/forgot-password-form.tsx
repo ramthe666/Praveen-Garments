@@ -47,7 +47,7 @@ export function ForgotPasswordForm() {
 
   if (sent) {
     return (
-      <div className="rounded-lg border bg-card p-6 shadow-sm" role="status">
+      <div className="shadow-soft rounded-3xl border border-border/70 bg-card p-6 sm:p-7" role="status">
         <div className="flex flex-col items-center gap-3 text-center">
           <span className="flex size-11 items-center justify-center rounded-full bg-success/10 text-success" aria-hidden="true">
             <MailCheck className="size-5" />
@@ -66,7 +66,7 @@ export function ForgotPasswordForm() {
   }
 
   return (
-    <div className="rounded-lg border bg-card p-6 shadow-sm">
+    <div className="shadow-soft rounded-3xl border border-border/70 bg-card p-6 sm:p-7">
       {error ? (
         <div className="mb-4">
           <Alert variant="destructive" role="alert">
