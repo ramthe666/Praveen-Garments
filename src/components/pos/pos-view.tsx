@@ -682,7 +682,7 @@ export function PosView() {
                     scanRef.current?.focus()
                   }
                 }}
-                placeholder="Search by name, product code, SKU, barcode or QR…"
+                placeholder="Search by name, code, SKU, barcode, QR, color, size, brand, category…"
                 className="h-11 pl-9"
                 type="search"
                 aria-label="Search products for the POS"

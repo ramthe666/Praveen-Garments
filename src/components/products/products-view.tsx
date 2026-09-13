@@ -215,7 +215,7 @@ export function ProductsView() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search name, code, SKU, barcode, QR…"
+            placeholder="Search name, code, SKU, barcode, QR, color, size, brand, category…"
             className="pl-9"
             aria-label="Search products"
             type="search"
