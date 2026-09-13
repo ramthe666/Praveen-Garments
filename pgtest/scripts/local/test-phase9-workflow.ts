@@ -38,6 +38,7 @@ const MIGRATIONS = [
   '../../../supabase/migrations/0014_phase6_report_exchange_cash.sql',
   '../../../supabase/migrations/0015_phase8_ist_date_boundaries.sql',
   '../../../supabase/migrations/0016_phase8_search_attributes.sql',
+  '../../../supabase/migrations/0017_phase11_purchase_tax_fix.sql',
 ]
 
 let passed = 0
@@ -107,7 +108,7 @@ grant all on all tables in schema auth, storage to postgres, authenticated, serv
   await c.query("set timezone to 'UTC'")
   await c.query("update public.company_settings set state = 'Tamil Nadu', timezone = 'Asia/Kolkata' where id = 1")
   await c.end()
-  console.log('[reset] fresh 0001 -> 0016 chain applied (16 migrations)')
+  console.log(`[reset] fresh 0001 -> ${MIGRATIONS[MIGRATIONS.length - 1]} chain applied (${MIGRATIONS.length} migrations)`)
 }
 
 // ---------------------------------------------------------------------------
@@ -663,19 +664,19 @@ async function main() {
   )).rows[0]
   check('supplier created', !!supplier.id)
   console.log('\n== PART 38-adjacent: purchase invoice tax-mode behavior (P9-BUG-2 evidence) ==')
-  // The app (fixed) now sends tax_mode 'exclusive'; the RPC default fallback
-  // is 'inclusive' whose branch double-counts tax. Capture the CURRENT
-  // database behavior on a DRAFT invoice (no stock/payable side effects):
+  // P9-BUG-2 was FIXED by 0017: purchases now default to tax_mode 'exclusive'
+  // (cost + GST on top — the PO contract), and the totals math no longer
+  // double-counts tax. Capture the FIXED behavior on a DRAFT invoice.
   const bugInv = await rpc(admin, 'create_purchase_invoice', {
     p_payload: JSON.stringify({ supplier_id: supplier.id, location_id: mainLoc.id,
       supplier_invoice_no: 'QA-BUG-2-PROBE', status: 'DRAFT',
       items: [{ variant_id: vBM.id, quantity: 1, unit_cost: 100 }] }),
   })
   const bugRow = await val(root, `select subtotal, tax_total, grand_total, tax_mode, status from public.purchase_invoices where supplier_invoice_no = 'QA-BUG-2-PROBE'`)
-  // inclusive branch: tax extracted from the entered total (100 -> 10.71) then ADDED on top: grand 110.71
-  check('P9-BUG-2 reproduced: inclusive-mode PI grand = entered total + extracted tax (110.71 for a 100 entry) — supplier payable overstated',
-    bugRow.tax_mode === 'inclusive' && Number(bugRow.subtotal) === 100 && Math.abs(Number(bugRow.grand_total) - 110.71) < 0.02, bugRow)
-  console.log('  >> documented: DB RPC create_purchase_invoice inclusive branch double-counts tax; app fix sends tax_mode=exclusive (code-only)')
+  // fixed exclusive branch: 100 entered + 12 GST (12%) = 112, tax counted ONCE
+  check('P9-BUG-2 fixed (0017): default mode EXCLUSIVE, grand = 100 cost + 12 tax = 112 — tax counted exactly once',
+    bugRow.tax_mode === 'exclusive' && Number(bugRow.subtotal) === 100 && Number(bugRow.tax_total) === 12 && Math.abs(Number(bugRow.grand_total) - 112) < 0.02, bugRow)
+  console.log('  >> fixed by 0017: purchases default to exclusive (GST added on top), totals = Σ line_total')
 
   console.log('\n== PART 35-36: supplier + purchase order + invoice + receiving ==')
 
@@ -702,8 +703,8 @@ async function main() {
   }) as Record<string, unknown>
   const piRow = await val(root, `select * from public.purchase_invoices where supplier_invoice_no = 'QA-SINV-001'`)
   check('purchase invoice created (draft)', piRow.status === 'DRAFT' && Number(piRow.subtotal) === 6000, piRow)
-  check('P9-BUG-2 (current behavior): PI grand 6642.86 vs PO grand 6720 for the SAME 10 units — PI subtotal sums tax-inclusive lines then adds tax again (DB defect, reported)',
-    Math.abs(Number(piRow.grand_total) - 6642.86) < 0.02 && Math.abs(Number(poRow.grand_total) - 6720) < 0.02,
+  check('P9-BUG-2 fixed: PI grand 6720 == PO grand 6720 for the SAME 10 units — invoice and order agree after 0017',
+    Math.abs(Number(piRow.grand_total) - 6720) < 0.02 && Math.abs(Number(poRow.grand_total) - 6720) < 0.02,
     { pi_grand: piRow.grand_total, po_grand: poRow.grand_total })
   check('stock NOT received while invoice is still draft', await qtyOf(inv, vBM.id, mainLoc.id) === 2)
   await rpc(admin, 'confirm_purchase_invoice', { p_invoice_id: piRow.id })
@@ -713,8 +714,8 @@ async function main() {
   const recvMove = await val(root, `select * from public.stock_movements where movement_type = 'PURCHASE' order by created_at desc limit 1`)
   check('PURCHASE movement +10 with supplier reference', Number(recvMove.quantity) === 10 && String(recvMove.reference_type).includes('purchase'))
   const piPay = await val(root, `select grand_total, paid_amount, due_amount, payment_status from public.purchase_invoices where id = $1`, [piRow.id])
-  check('payable registered at the (defective) invoice grand 6642.86 — DUE until paid (current behavior documented)',
-    Number(piPay.due_amount) === 6642.86 && piPay.payment_status === 'DUE', piPay)
+  check('payable registered at the CORRECTED invoice grand 6720 — DUE until paid',
+    Number(piPay.due_amount) === 6720 && piPay.payment_status === 'DUE', piPay)
 
   console.log('\n== PART 36b: partial receiving (order 100, receive 60) ==')
   const po2 = await rpc(admin, 'create_purchase_order', {
@@ -750,13 +751,13 @@ async function main() {
   check('purchase return created', !!pr)
   check('inventory reduced by 3 (12 -> 9)', await qtyOf(inv, vBM.id, mainLoc.id) === 9)
   const prRow = await val(root, `select * from public.purchase_returns order by created_at desc limit 1`)
-  check('supplier balance credited by the return value (1800 = 3 units, proportional to the invoice line)',
-    Math.abs(Number(prRow.grand_total) - 1800) < 0.02, prRow)
+  check('supplier balance credited by the return value (2016 = 3 units x 672 tax-inclusive line unit)',
+    Math.abs(Number(prRow.grand_total) - 2016) < 0.02, prRow)
   const supPayable = async () => Number((await val(root,
     `select coalesce(sum(due_amount), 0) as payable from public.purchase_invoices where supplier_id = $1 and status = 'RECEIVED'`,
     [supplier.id])).payable)
-  // RECEIVED invoices: PI-1 6642.86 (credited 1800) + PI-2 39857.14; DRAFT probe excluded; minus the 1000 payment below
-  check('supplier payable = PI-1 + PI-2 - return (44700 before the payment)', await supPayable() === 44700, await supPayable())
+  // RECEIVED invoices: PI-1 6720 (credited 2016) + PI-2 40320; DRAFT probe excluded; minus the 1000 payment below
+  check('supplier payable = PI-1 + PI-2 - return (45024 before the payment)', await supPayable() === 45024, await supPayable())
 
   console.log('\n== PART 22 (exact user scenario): bill 1250, pay 2000, change 750 ==')
   const t2b = await doSale(admin, {

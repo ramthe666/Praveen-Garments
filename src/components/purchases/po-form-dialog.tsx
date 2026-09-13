@@ -308,7 +308,7 @@ export function POFormDialog({
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
-          <span className="mr-auto text-sm text-muted-foreground">Preview total (tax added by the server): <strong className="text-foreground">{formatMoney(total)}</strong></span>
+          <span className="mr-auto text-sm text-muted-foreground">Cost total (GST added on top by the server): <strong className="text-foreground">{formatMoney(total)}</strong></span>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={submit} disabled={saving}>
             {saving ? 'Saving…' : editOrder ? 'Save changes' : 'Create order'}
