@@ -323,3 +323,21 @@ Stage Summary:
 - 0017 built, surgically diff-verified, and proven by 687 green DB checks including a fresh 42-check dedicated suite; the math defect and the POS-settings leak are both fixed; existing data repair is idempotent and never rewrites real payments
 - Open owner items: (1) run 0017_phase11_purchase_tax_fix.sql in the Supabase SQL editor (paste-ready copy in download/), then I verify via scripts/p11-cloud-verify.ts; (2) provide a fresh GitHub token (or push 6ba2829 themselves) — current one is expired/revoked
 - Both existing cloud invoices are Phase-4 TEST records (P4TEST/P2TEST), so the repair touches no real business data; ₹190.48 total historical over-charge stays visible on those two closed test invoices by design
+
+---
+Task ID: 16
+Agent: main (Super Z)
+Task: Phase 11 close — user ran migration 0017 on the cloud and provided a fresh GitHub token; verify the cloud fix end-to-end, push the pending commits
+
+Work Log:
+- Repo state: clean, 2 commits pending push (6ba2829 the 0017 fix, 19bce48 worklog/verify tooling)
+- Cloud data repair verified via scripts/p11-cloud-verify.ts (service key, read-only): PI-2026-000001 grand 2400 (was 2514.29), PI-2026-000002 grand 1600 (was 1676.19); paid_amount preserved (2514.29/1676.19), due=0, PAID — 2/2 consistent, grand == Σ line_total per invoice
+- Live functional proof via scripts/p11-live-functional-test.ts (new, persisted): owner signed in over REST, created two labelled TEST DRAFT invoices (drafts never touch stock/payables): TEST A no payload tax_mode → defaulted EXCLUSIVE (no POS leak) sub 6000 + tax 300 = grand 6300; TEST B explicit inclusive → grand 6000, tax 285.71 extracted; stock_balances snapshot identical before/after; both drafts cancelled via cancel_purchase_invoice; final state 4 invoices read back (2 repaired + 2 CANCELLED tests). 15/15 checks green after fixing one test-side expectation (DRAFT rows carry due=0/DUE by design; RPC response reports eventual payable)
+- UI E2E (agent-browser as owner, live cloud data): /purchases invoices tab shows corrected totals (₹2,400.00 / ₹1,600.00 — pre-fix values were ₹2,514.29 / ₹1,676.19); PI-2026-000002 detail: Taxable 1600.00 / tax 76.19 / Grand 1600.00 (the double-count gone); 0 page errors, 0 console errors; screenshot download/p11-after-pi2-detail.png (git-ignored, local evidence)
+- Push: commit 8857d3f (live test script) added; pushed via one-off tokenized URL with the fresh token — remote HEAD verified = 8857d3f (Phase 11 fully landed: 6ba2829 + 19bce48 + 8857d3f)
+- Existing migrations/logic untouched this session (0001–0016 unchanged; 0017 was already built in the prior session and only VERIFIED now)
+
+Stage Summary:
+- Purchase-tax fix CLOSED: migration 0017 applied on cloud by owner, data repair verified (2/2), function-level fix proven live in both tax modes (default exclusive, grand = Σ line), UI shows corrected totals, all code pushed to GitHub
+- Cloud residue: PI-2026-000003/000004 (CANCELLED, supplier-invoice-no TEST-0017-A/B, clearly labelled) — the two historical P4TEST invoices keep paid > grand as the documented ₹190.48 residual over-charge (payments never rewritten)
+- Open items: UAT with physical scanner hardware; future sequence numbers start at PI-2026-000005
