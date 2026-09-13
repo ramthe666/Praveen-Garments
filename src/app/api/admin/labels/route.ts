@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 import { requireSessionPermission, jsonError } from '@/lib/api/guard'
 import { logError } from '@/lib/errors'
 import { readJson } from '@/lib/catalog/api'
@@ -33,9 +33,12 @@ export async function POST(request: NextRequest) {
     return jsonError(parsed.error.issues[0]?.message ?? 'Invalid input.', 422)
   }
 
-  const admin = createAdminClient()
+  const session = await createClient()
   try {
-    await admin.from('audit_logs').insert({
+    // Insert through the caller's session (audit_logs_insert_self, RLS-checked
+    // and correctly attributed). No service-role dependency: label printing
+    // keeps working even when the service key is rotated and not re-pasted.
+    const { error: auditError } = await session.from('audit_logs').insert({
       user_id: guard.userId,
       user_email: guard.email,
       action: 'settings_changed',
@@ -47,6 +50,7 @@ export async function POST(request: NextRequest) {
         total_labels: parsed.data.items.reduce((sum, i) => sum + i.quantity, 0),
       } as unknown as Json,
     })
+    if (auditError) throw auditError
   } catch (auditError) {
     logError('api/labels:audit', auditError)
     // non-fatal: printing still worked, auditing failed

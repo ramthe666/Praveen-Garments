@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireSessionPermission, jsonError } from '@/lib/api/guard'
-import { logError, toUserMessage } from '@/lib/errors'
+import { logError, toUserMessage, isServiceKeyRejected, SERVICE_KEY_INVALID_MESSAGE } from '@/lib/errors'
 import type { AuditAction, Profile, UserRole } from '@/types/database'
 
 export const dynamic = 'force-dynamic'
@@ -84,6 +84,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   if (fetchError) {
     logError('api/users/[id]:fetch', fetchError)
+    if (isServiceKeyRejected(fetchError)) {
+      return jsonError(SERVICE_KEY_INVALID_MESSAGE, 503)
+    }
     return jsonError(toUserMessage(fetchError), 500)
   }
   if (!existing) return jsonError('User not found.', 404)
@@ -103,6 +106,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     })
     if (banError) {
       logError('api/users/[id]:ban', banError)
+      if (isServiceKeyRejected(banError)) {
+        return jsonError(SERVICE_KEY_INVALID_MESSAGE, 503)
+      }
       return jsonError(toUserMessage(banError, 'Could not update the account status.'), 400)
     }
   }

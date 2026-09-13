@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireSessionPermission, jsonError } from '@/lib/api/guard'
-import { logError, toUserMessage } from '@/lib/errors'
+import { logError, toUserMessage, isServiceKeyRejected, SERVICE_KEY_INVALID_MESSAGE } from '@/lib/errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,7 +41,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   const admin = createAdminClient()
-  const { data: existing } = await admin.from('profiles').select('email').eq('id', id).maybeSingle()
+  const { data: existing, error: lookupError } = await admin.from('profiles').select('email').eq('id', id).maybeSingle()
+  if (lookupError) {
+    logError('api/users/[id]/password:lookup', lookupError)
+    if (isServiceKeyRejected(lookupError)) {
+      return jsonError(SERVICE_KEY_INVALID_MESSAGE, 503)
+    }
+    return jsonError('Could not read the user account. Please try again.', 500)
+  }
   if (!existing?.email) return jsonError('User not found.', 404)
 
   if (parsed.data.mode === 'email') {
@@ -51,6 +58,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     })
     if (linkError) {
       logError('api/users/[id]/password:email', linkError)
+      if (isServiceKeyRejected(linkError)) {
+        return jsonError(SERVICE_KEY_INVALID_MESSAGE, 503)
+      }
       return jsonError(
         'Could not send the reset email. SMTP may not be configured on Supabase — use "Set new password" instead.',
         502
@@ -64,6 +74,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   })
   if (updateError) {
     logError('api/users/[id]/password:set', updateError)
+    if (isServiceKeyRejected(updateError)) {
+      return jsonError(SERVICE_KEY_INVALID_MESSAGE, 503)
+    }
     return jsonError(toUserMessage(updateError, 'Could not set the new password.'), 400)
   }
 

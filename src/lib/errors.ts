@@ -34,6 +34,30 @@ export function isPermissionDenied(error: unknown): boolean {
   )
 }
 
+/**
+ * true when a service-role (admin client) call was rejected because
+ * SUPABASE_SERVICE_ROLE_KEY on the server is stale/invalid (Supabase returns
+ * 401 "Invalid API key"). This is a SERVER CONFIGURATION problem, never a
+ * user-input problem — callers must surface it as such instead of pretending
+ * a row "was not found".
+ */
+export function isServiceKeyRejected(error: unknown): boolean {
+  const e = error as DbErrorLike
+  const message = typeof e?.message === 'string' ? e.message.toLowerCase() : ''
+  return (
+    e?.code === '401' ||
+    message.includes('invalid api key') ||
+    // PostgREST wraps auth rejections differently in some versions
+    (message.includes('401') && message.includes('unauthorized'))
+  )
+}
+
+/** Honest, actionable message for stale service-key failures (admin-only features). */
+export const SERVICE_KEY_INVALID_MESSAGE =
+  'This feature needs the server service key, which appears to be outdated. ' +
+  'Ask the owner to paste the current SUPABASE_SERVICE_ROLE_KEY from Supabase → Settings → API ' +
+  'into the server .env.local and restart the app.'
+
 /** Log the full error server-side (never swallow), keeping PII out of it. */
 export function logError(scope: string, error: unknown): void {
   const e = error as DbErrorLike

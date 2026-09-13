@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { requireSessionPermission, jsonError } from '@/lib/api/guard'
 import { logError } from '@/lib/errors'
@@ -55,15 +54,28 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return jsonError('Nothing to update.', 400)
   }
 
-  const admin = createAdminClient()
+  // Reference validation runs THROUGH THE CALLER's SESSION (RLS allows staff
+  // reads on categories/brands). This deliberately does NOT use the
+  // service-role client: a stale service key must never turn product edits
+  // into a false "category was not found". Lookup failures are reported
+  // honestly as server errors, distinct from genuine 422 not-founds.
+  const session = await createClient()
 
   // validate references when they change
   if (input.category_id) {
-    const { data: cat } = await admin.from('categories').select('id').eq('id', input.category_id).maybeSingle()
+    const { data: cat, error: catError } = await session.from('categories').select('id').eq('id', input.category_id).maybeSingle()
+    if (catError) {
+      logError('api/products:update-category-check', catError)
+      return jsonError('Could not verify the selected category. Please try again.', 500)
+    }
     if (!cat) return jsonError('Selected category was not found.', 422)
   }
   if (input.subcategory_id) {
-    const { data: sub } = await admin.from('categories').select('id, parent_id').eq('id', input.subcategory_id).maybeSingle()
+    const { data: sub, error: subError } = await session.from('categories').select('id, parent_id').eq('id', input.subcategory_id).maybeSingle()
+    if (subError) {
+      logError('api/products:update-subcategory-check', subError)
+      return jsonError('Could not verify the selected subcategory. Please try again.', 500)
+    }
     const parentId = input.category_id ?? undefined
     if (!sub) return jsonError('Selected subcategory was not found.', 422)
     if (parentId !== undefined && sub.parent_id !== parentId) {
@@ -71,14 +83,17 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
   }
   if (input.brand_id) {
-    const { data: brand } = await admin.from('brands').select('id').eq('id', input.brand_id).maybeSingle()
+    const { data: brand, error: brandError } = await session.from('brands').select('id').eq('id', input.brand_id).maybeSingle()
+    if (brandError) {
+      logError('api/products:update-brand-check', brandError)
+      return jsonError('Could not verify the selected brand. Please try again.', 500)
+    }
     if (!brand) return jsonError('Selected brand was not found.', 422)
   }
 
   // Update through the CALLER's session client so RLS re-checks
   // manage_products inside the database and the audit trigger attributes
   // auth.uid() (service-role writes would leave the audit user null).
-  const session = await createClient()
   const { data, error: updateError } = await session
     .from('products')
     .update(input)

@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 import { requireSessionPermission, jsonError } from '@/lib/api/guard'
 import { logError } from '@/lib/errors'
 
@@ -18,6 +18,12 @@ const ALLOWED_TYPES: Record<string, string> = {
  * server-side, stores under products/<productId>/<uuid>.<ext> in the public
  * "product-images" bucket, updates the product row, and removes the previous
  * object when replacing.
+ *
+ * Everything runs through the CALLER's session client: migration 0006 grants
+ * product-images insert/update/delete to authenticated manage_products
+ * holders and products update via products_update_products. The service-role
+ * key is intentionally NOT used here, so image upload keeps working even when
+ * that key is rotated and not yet re-pasted.
  */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const guard = await requireSessionPermission('manage_products')
@@ -48,13 +54,21 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return jsonError('The image is too large. Maximum size is 2 MB.', 413)
   }
 
-  const admin = createAdminClient()
+  const session = await createClient()
 
-  const { data: product } = await admin.from('products').select('id, image_path').eq('id', id).maybeSingle()
+  const { data: product, error: productLookupError } = await session
+    .from('products')
+    .select('id, image_path')
+    .eq('id', id)
+    .maybeSingle()
+  if (productLookupError) {
+    logError('api/products/image:lookup', productLookupError)
+    return jsonError('Could not read the product. Please try again.', 500)
+  }
   if (!product) return jsonError('Product not found.', 404)
 
   const path = `products/${id}/${crypto.randomUUID()}.${ext}`
-  const { error: uploadError } = await admin.storage
+  const { error: uploadError } = await session.storage
     .from('product-images')
     .upload(path, await file.arrayBuffer(), { contentType: file.type, upsert: false })
 
@@ -63,17 +77,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return jsonError('Could not upload the image. Ensure migration 0006 is applied.', 400)
   }
 
-  const { error: updateError } = await admin.from('products').update({ image_path: path }).eq('id', id)
+  const { error: updateError } = await session.from('products').update({ image_path: path }).eq('id', id)
   if (updateError) {
     logError('api/products/image:update', updateError)
     // remove the orphaned object so storage stays consistent
-    await admin.storage.from('product-images').remove([path]).catch(() => {})
+    await session.storage.from('product-images').remove([path]).catch(() => {})
     return jsonError('Uploaded the image but could not attach it to the product.', 500)
   }
 
   // remove the previous image (replace semantics)
   if (product.image_path && product.image_path !== path) {
-    await admin.storage.from('product-images').remove([product.image_path]).catch((e) => {
+    await session.storage.from('product-images').remove([product.image_path]).catch((e) => {
       logError('api/products/image:remove-old', e)
     })
   }
@@ -91,19 +105,27 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   if (!guard.ok) return guard.response
 
   const { id } = await params
-  const admin = createAdminClient()
+  const session = await createClient()
 
-  const { data: product } = await admin.from('products').select('id, image_path').eq('id', id).maybeSingle()
+  const { data: product, error: productLookupError } = await session
+    .from('products')
+    .select('id, image_path')
+    .eq('id', id)
+    .maybeSingle()
+  if (productLookupError) {
+    logError('api/products/image:lookup', productLookupError)
+    return jsonError('Could not read the product. Please try again.', 500)
+  }
   if (!product) return jsonError('Product not found.', 404)
   if (!product.image_path) return jsonError('This product has no image.', 404)
 
-  const { error: updateError } = await admin.from('products').update({ image_path: null }).eq('id', id)
+  const { error: updateError } = await session.from('products').update({ image_path: null }).eq('id', id)
   if (updateError) {
     logError('api/products/image:clear', updateError)
     return jsonError('Could not remove the image reference.', 400)
   }
 
-  await admin.storage.from('product-images').remove([product.image_path]).catch((e) => {
+  await session.storage.from('product-images').remove([product.image_path]).catch((e) => {
     logError('api/products/image:delete', e)
   })
 

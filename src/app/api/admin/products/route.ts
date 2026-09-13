@@ -90,23 +90,54 @@ export async function POST(request: NextRequest) {
   }
   const input = parsed.data
 
+  // Service-role client is only kept for the compensation delete below —
+  // it must NEVER gate the happy path (a stale service key would otherwise
+  // turn every product create into a false "category not found").
   const admin = createAdminClient()
   // The product row is inserted WITH THE USER's session client so RLS
   // re-checks manage_products inside the database and the audit trigger can
   // attribute auth.uid() (service-role writes would leave user_id null).
   const userClient = await createClient()
 
-  // Validate category / subcategory / brand references server-side
-  const { data: category } = await admin.from('categories').select('id, parent_id').eq('id', input.category_id).maybeSingle()
+  // Validate category / subcategory / brand references server-side THROUGH
+  // THE CALLER's SESSION (RLS allows staff reads on these tables). A failed
+  // lookup is reported honestly instead of being confused with "not found".
+  const { data: category, error: categoryError } = await userClient
+    .from('categories')
+    .select('id, parent_id')
+    .eq('id', input.category_id)
+    .maybeSingle()
+  if (categoryError) {
+    logError('api/products:create-category-check', categoryError)
+    return jsonError(isTableMissing(categoryError)
+      ? 'Database setup is not complete yet. Please apply the pending migrations.'
+      : 'Could not verify the selected category. Please try again.', 500)
+  }
   if (!category) return jsonError('Selected category was not found.', 422)
   if (input.subcategory_id) {
-    const { data: sub } = await admin.from('categories').select('id, parent_id').eq('id', input.subcategory_id).maybeSingle()
+    const { data: sub, error: subError } = await userClient
+      .from('categories')
+      .select('id, parent_id')
+      .eq('id', input.subcategory_id)
+      .maybeSingle()
+    if (subError) {
+      logError('api/products:create-subcategory-check', subError)
+      return jsonError('Could not verify the selected subcategory. Please try again.', 500)
+    }
     if (!sub || sub.parent_id !== input.category_id) {
       return jsonError('The selected subcategory does not belong to the selected category.', 422)
     }
   }
   if (input.brand_id) {
-    const { data: brand } = await admin.from('brands').select('id').eq('id', input.brand_id).maybeSingle()
+    const { data: brand, error: brandError } = await userClient
+      .from('brands')
+      .select('id')
+      .eq('id', input.brand_id)
+      .maybeSingle()
+    if (brandError) {
+      logError('api/products:create-brand-check', brandError)
+      return jsonError('Could not verify the selected brand. Please try again.', 500)
+    }
     if (!brand) return jsonError('Selected brand was not found.', 422)
   }
 
@@ -149,8 +180,19 @@ export async function POST(request: NextRequest) {
 
     if (variantError) {
       logError('api/products:create-variants', variantError)
-      // compensate: remove the just-created product (it has no references yet)
-      await admin.from('products').delete().eq('id', product.id)
+      // compensate: remove the just-created product (it has no references yet).
+      // RLS has no DELETE policy on products, so this needs the service role;
+      // if that is unavailable (stale key) we at least ARCHIVE the row via the
+      // caller's session so a variant-less product never stays live.
+      const { error: compError } = await admin.from('products').delete().eq('id', product.id)
+      if (compError) {
+        logError('api/products:create-compensate', compError)
+        const { error: archiveError } = await userClient
+          .from('products')
+          .update({ is_active: false })
+          .eq('id', product.id)
+        if (archiveError) logError('api/products:create-compensate-archive', archiveError)
+      }
       return jsonError(mutationErrorMessage(variantError, 'Could not create the product variants.'), 400)
     }
     return NextResponse.json({ product, variants: (variantResult as { variants?: unknown[] })?.variants ?? [] }, { status: 201 })

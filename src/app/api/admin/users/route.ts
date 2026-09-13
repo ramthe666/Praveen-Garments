@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireSessionPermission, jsonError } from '@/lib/api/guard'
-import { logError, toUserMessage } from '@/lib/errors'
+import { logError, toUserMessage, isServiceKeyRejected, SERVICE_KEY_INVALID_MESSAGE } from '@/lib/errors'
 import type { UserRole } from '@/types/database'
 
 export const dynamic = 'force-dynamic'
@@ -67,6 +67,9 @@ export async function POST(request: NextRequest) {
 
   if (createError) {
     logError('api/users:create', createError)
+    if (isServiceKeyRejected(createError)) {
+      return jsonError(SERVICE_KEY_INVALID_MESSAGE, 503)
+    }
     if (createError.message.toLowerCase().includes('already been registered')) {
       return jsonError('A user with this email already exists.', 409)
     }
