@@ -299,3 +299,27 @@ Stage Summary:
 - All 3 user requests delivered: trend visualization report built + cancelled-bill clarity fixed in both places + code pushed
 - Zero migrations touched (0017 still reserved for the P9-BUG-2 purchase-tax fix — owner decision pending)
 - Open items unchanged: purchase-tax fix (P9-BUG-2), UAT with physical scanner hardware
+
+---
+Task ID: 15
+Agent: main (Super Z)
+Task: Phase 11 — implement the agreed migration 0017 (P9-BUG-2 purchase-tax fix), check and resolve it; no existing migrations/logics touched; push to GitHub
+
+Work Log:
+- User confirmed: keep all existing migrations/logics intact; "Look a trend" is working fine; proceed with the purchase-tax fix as migration 0017
+- Root cause re-confirmed from 0009 source + cloud audit: create_purchase_invoice accumulated v_subtotal from LINE totals (tax-inclusive in both modes) then computed grand = subtotal − disc + tax → tax double-counted (inclusive 10×600@12%: 6642.86 vs correct 6000; exclusive: 7440 vs 6720) AND line discounts subtracted twice; the RPC also silently inherited the POS SALES default_tax_mode ('inclusive') into supplier cost documents. Item-row math was always mode-correct; only document totals (subtotal/tax_total/grand_total/due_amount) were wrong → supplier payables overstated; GST report (item-level) was never affected
+- Cloud data audit (service key REST): 2 purchase invoices, both RECEIVED+PAID at inflated totals (PI-2026-000001: 2514.29 paid for a true 2400.00; PI-2026-000002: 1676.19 for a true 1600.00) — and BOTH are Phase-4 TEST artifacts (P4TEST Textile Mills / P2TEST Casual Shirt), not real business records; 0 purchase returns, 2 supplier payments
+- Built 0017_phase11_purchase_tax_fix.sql via scripts/p11-gen-0017.ts (verbatim 0009 extract + 6 surgical edits, diff-verified): E1 declare v_grand; E2 tax_mode default 'exclusive' for purchases (no POS sales-setting leak; explicit payload mode still honoured); E3 subtotal = Σ gross (PO convention) + v_grand = Σ line; E4/E5/E6 all grand expressions = v_grand. Invariant in BOTH modes: grand_total = Σ line_total = exactly what return credits and FIFO payments compute against; a PO and its PI now agree for identical items
+- Data repair in 0017 (idempotent recompute from item rows): non-CANCELLED invoices get subtotal/discount_total/tax_total/grand_total recomputed; RECEIVED invoices additionally get due = grand − paid − return credits (floor 0) + engine-convention payment_status; paid_amount NEVER rewritten (real payments; historical over-charge stays visible as paid > grand on fully-paid docs); CANCELLED untouched; no tables/columns/RLS/signatures changed; grants re-issued verbatim
+- test-0017.ts (new, self-resetting 0001→0016): reproduces the OLD bug in-run (6642.86/1676.19/7440/842.86), applies 0017 mid-suite, verifies repair (incl. confirm-drafted-repaired-invoice flow, FIFO isolation via 3 suppliers), new math (default exclusive 6720 == PO 6720; explicit inclusive 6000; discount 6496 = 5800+696; multi-line 2394), downstream (return credit 2016, due 4704→0, PAYMENT_EXCEEDS_DUE on corrected payable), report-level relational checks (purchase_report/dashboard/gst), global invariant grand==Σline, idempotency (md5 row hash), security (anon ACL, cashier/accountant gate, grant matrix, RLS count) = 42/42 PASS
+- Phase 9 workflow suite updated to post-fix expectations (112 probe, PI==PO 6720, return credit 2016, payable 45024) and its chain extended to 0017 = 221/221 PASS
+- Full canonical battery on the 0017 state: audit1 73/73, audit2 52/52, audit3 48/48, 0014 12/12, 0011 27/27, 0012 116/116, 0013 25/25 (= 353/353 identical to Phases 6-9), 0015 58/58, 0016 43/43, search-p3 13/13, 0017 42/42, phase9 221/221 — 687 green, 0 failures
+- Frontend: both purchase form preview labels refined to "Cost total (GST added on top by the server)" — now literally the server contract; tsc src/ 0 errors, eslint clean, production build PASSES (26.2s); migrations README gains the 0017 entry
+- Cloud apply: NOT possible from here — PostgREST cannot run DDL (no exec-SQL RPC exists, probed), no DB password for the pooler, and the Supabase platform login is captcha-gated. Owner must paste 0017 in the SQL editor (same as 0015/0016). Paste-ready copy + scripts/p11-cloud-verify.ts (post-apply REST verification) prepared; download/p11-before-pi2-detail.png captures the pre-fix state
+- Browser E2E (app vs cloud, as owner): login OK, /purchases renders, PI-2026-000002 detail shows the old inflated numbers (Taxable 1600.00 / tax 76.19 → Grand 1676.19 — the bug visible), 0 page errors
+- Push: local commit 6ba2829, but the GitHub token from the last session is now INVALID (401 Bad credentials on api.github.com; remote HEAD verified at 5ba29a2 = Phase 10 complete) — push BLOCKED, needs a fresh token from the owner
+
+Stage Summary:
+- 0017 built, surgically diff-verified, and proven by 687 green DB checks including a fresh 42-check dedicated suite; the math defect and the POS-settings leak are both fixed; existing data repair is idempotent and never rewrites real payments
+- Open owner items: (1) run 0017_phase11_purchase_tax_fix.sql in the Supabase SQL editor (paste-ready copy in download/), then I verify via scripts/p11-cloud-verify.ts; (2) provide a fresh GitHub token (or push 6ba2829 themselves) — current one is expired/revoked
+- Both existing cloud invoices are Phase-4 TEST records (P4TEST/P2TEST), so the repair touches no real business data; ₹190.48 total historical over-charge stays visible on those two closed test invoices by design
