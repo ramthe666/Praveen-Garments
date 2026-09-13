@@ -7,6 +7,7 @@ import {
   Coins,
   FileText,
   Landmark,
+  LineChart,
   Package,
   PieChart,
   Receipt,
@@ -19,6 +20,7 @@ import {
   Wallet,
 } from 'lucide-react'
 import type { AppPermission } from '@/types/database'
+import { TrendReportView } from '@/components/reports/trend-report-view'
 import {
   CatalogPerformanceReportView,
   GstReportView,
@@ -62,6 +64,15 @@ export const REPORT_GROUPS: ReportDef['group'][] = [
 ]
 
 export const REPORTS: ReportDef[] = [
+  {
+    slug: 'trend',
+    title: 'Look a trend',
+    description: 'Visual charts — sales trend, bills per day, payment mix, category share, top products and customers.',
+    group: 'Sales & revenue',
+    icon: LineChart,
+    permission: 'view_reports',
+    View: TrendReportView,
+  },
   {
     slug: 'sales',
     title: 'Sales',

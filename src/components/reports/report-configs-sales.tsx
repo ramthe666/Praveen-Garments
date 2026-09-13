@@ -14,6 +14,7 @@ import {
   num,
   pct,
   saleLink,
+  statusCell,
   timeCell,
 } from '@/components/reports/config-helpers'
 import { formatMoney } from '@/lib/catalog/constants'
@@ -32,6 +33,7 @@ const salesReport: TableReportConfig<Row> = {
   emptyTitle: 'No bills in this period',
   columns: [
     { key: 'sale_number', header: 'Invoice', render: saleLink },
+    { key: 'status', header: 'Status', render: statusCell, csv: (r) => String(r.status ?? '') },
     { key: 'sale_date', header: 'Date', render: (r) => timeCell(r.sale_date), csv: (r) => String(r.sale_date ?? '') },
     { key: 'customer_name', header: 'Customer', render: (r) => String(r.customer_name ?? 'Walk-in') },
     { key: 'cashier_name', header: 'Cashier', hide: 'md' },
@@ -92,6 +94,7 @@ const salesReport: TableReportConfig<Row> = {
     { value: 'due_desc', label: 'Highest due' },
   ],
   defaultSort: 'date_desc',
+  exportNote: 'Cancelled bills are excluded by default; choose “All statuses” to include them (shown with a red badge).',
 }
 
 // ---------------------------------------------------------------------------

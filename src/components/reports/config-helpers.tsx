@@ -36,6 +36,24 @@ export function saleLink(row: Record<string, unknown>): React.ReactNode {
   )
 }
 
+/** Completed / Cancelled bill badge — used on the Sales report so a
+ *  cancelled bill is never mistaken for live revenue. */
+export function statusCell(row: Record<string, unknown>): React.ReactNode {
+  const status = String(row.status ?? 'COMPLETED')
+  if (status === 'CANCELLED') {
+    return (
+      <span className="inline-flex items-center whitespace-nowrap rounded-md border border-destructive/25 bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+        Cancelled
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center whitespace-nowrap rounded-md border border-success/25 bg-success/10 px-2 py-0.5 text-xs font-medium text-success">
+      Completed
+    </span>
+  )
+}
+
 export const SALES_STATUS_OPTIONS = [
   { value: 'COMPLETED', label: 'Completed' },
   { value: 'CANCELLED', label: 'Cancelled' },

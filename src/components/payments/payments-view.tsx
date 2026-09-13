@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { Search, Wallet, ArrowDownLeft, ArrowUpRight } from 'lucide-react'
+import { Search, Wallet, ArrowDownLeft, ArrowUpRight, Ban } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -54,6 +54,10 @@ export function PaymentsView() {
   const [total, setTotal] = React.useState(0)
   const [loading, setLoading] = React.useState(true)
   const [setupNeeded, setSetupNeeded] = React.useState(false)
+  /** Bill numbers whose sale was later CANCELLED — the money row stays in
+   *  history (it really moved) but is shown struck-through with a badge so
+   *  nobody mistakes it for live income. Money reports already exclude it. */
+  const [cancelledBills, setCancelledBills] = React.useState<Set<string>>(new Set())
 
   const load = React.useCallback(async () => {
     setLoading(true)
@@ -76,6 +80,32 @@ export function PaymentsView() {
       const result = data as unknown as PageResult<PaymentLedgerRow>
       setRows(result.rows ?? [])
       setTotal(Number(result.total ?? 0))
+      // Mark bill payments whose sale was cancelled afterwards. Batch lookup
+      // by sale_number (RLS: view_sales / create_sale holders can read sales —
+      // the same people who can see sale_payment rows in the ledger).
+      const billNumbers = (result.rows ?? [])
+        .filter((r) => r.source === 'sale_payment' && r.doc_number)
+        .map((r) => r.doc_number)
+      if (billNumbers.length > 0) {
+        const { data: saleRows, error: saleErr } = await supabase
+          .from('sales')
+          .select('sale_number,status')
+          .in('sale_number', billNumbers)
+        if (saleErr) {
+          logError('payments:cancelled-lookup', saleErr)
+          setCancelledBills(new Set())
+        } else {
+          setCancelledBills(
+            new Set(
+              (saleRows ?? [])
+                .filter((s) => s.status === 'CANCELLED')
+                .map((s) => s.sale_number),
+            ),
+          )
+        }
+      } else {
+        setCancelledBills(new Set())
+      }
     }
     setLoading(false)
   }, [supabase, debouncedSearch, source, page])
@@ -94,6 +124,9 @@ export function PaymentsView() {
         <h1 className="text-xl font-semibold tracking-tight">Payment history</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Every money movement — receipts, payments, refunds and expenses — linked to its document.
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Payments on cancelled bills keep their place in history but are marked and struck-through — they are already excluded from the money and cash reports.
         </p>
       </div>
 
@@ -156,8 +189,9 @@ export function PaymentsView() {
                   <tbody className="divide-y">
                     {rows.map((row) => {
                       const incoming = row.source === 'customer_payment' || row.source === 'sale_payment'
+                      const billCancelled = row.source === 'sale_payment' && cancelledBills.has(row.doc_number)
                       return (
-                        <tr key={`${row.source}-${row.source_id}`}>
+                        <tr key={`${row.source}-${row.source_id}`} className={billCancelled ? 'opacity-70' : undefined}>
                           <td className="px-3 py-2.5 font-mono text-xs font-medium">
                             <span className="inline-flex items-center gap-1.5">
                               {incoming ? (
@@ -166,6 +200,15 @@ export function PaymentsView() {
                                 <ArrowUpRight className="size-3.5 text-destructive" aria-hidden="true" />
                               )}
                               {row.doc_number}
+                              {billCancelled ? (
+                                <span
+                                  className="inline-flex items-center whitespace-nowrap rounded-md border border-destructive/25 bg-destructive/10 px-1.5 py-0.5 font-sans text-[10px] font-medium text-destructive"
+                                  title="This bill was cancelled — the money was returned and is not counted in reports"
+                                >
+                                  <Ban className="mr-0.5 inline size-3" aria-hidden="true" />
+                                  Bill cancelled
+                                </span>
+                              ) : null}
                             </span>
                           </td>
                           <td className="max-w-[160px] truncate px-3 py-2.5">{row.party_name ?? '—'}</td>
@@ -178,7 +221,7 @@ export function PaymentsView() {
                             <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{row.method}</span>
                           </td>
                           <td className="hidden px-3 py-2.5 text-xs text-muted-foreground lg:table-cell">{formatDateTime(row.entry_at)}</td>
-                          <td className={cn('px-3 py-2.5 text-right font-medium tabular-nums', incoming ? 'text-success' : 'text-destructive')}>
+                          <td className={cn('px-3 py-2.5 text-right font-medium tabular-nums', billCancelled ? 'text-muted-foreground line-through' : incoming ? 'text-success' : 'text-destructive')}>
                             {incoming ? '+' : '−'}{formatMoney(Number(row.amount))}
                           </td>
                           <td className="hidden max-w-[120px] truncate px-3 py-2.5 text-xs text-muted-foreground xl:table-cell">
