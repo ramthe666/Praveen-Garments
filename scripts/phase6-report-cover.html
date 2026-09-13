@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700;900&family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    @page { size: 794px 1123px; margin: 0; }
+    :root {
+      --c-bg: #ffffff;
+      --c-accent: #887129;
+      --c-text: #21201e;
+      --c-muted: #79766f;
+      --c-mid: #5a5238;
+    }
+    html, body {
+      margin: 0; padding: 0;
+      width: 794px; height: 1123px;
+      background: var(--c-bg);
+      font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    }
+    @media screen {
+      html { height: auto; display: flex; justify-content: center; min-height: 100vh; background: #e9e8e5; }
+      body { transform-origin: top center; scale: min(1, calc(100vw / 794), calc(100vh / 1123)); margin: 0 auto; box-shadow: 0 0 60px rgba(0,0,0,0.18); }
+    }
+    .cover { width: 794px; height: 1123px; position: relative; border: none; outline: none; box-shadow: none; }
+
+    /* Layer 1 - background grid (CSS pattern, clipped) */
+    .layer1 {
+      position: absolute; inset: 0; overflow: hidden; z-index: 1;
+      background-image:
+        repeating-linear-gradient(0deg, rgba(90,82,56,0.045) 0 0.5px, transparent 0.5px 50px),
+        repeating-linear-gradient(90deg, rgba(90,82,56,0.045) 0 0.5px, transparent 0.5px 50px);
+    }
+
+    /* Layer 2 - structure: ultra-thick left anchor line */
+    .layer2 { position: absolute; inset: 0; z-index: 2; }
+    .anchor-line {
+      position: absolute;
+      left: 95px; top: 112px; bottom: 112px;
+      width: 8px;
+      background: var(--c-accent);
+    }
+
+    /* Layer 3 - content */
+    .layer3 { position: absolute; inset: 0; z-index: 3; }
+    .kicker {
+      position: absolute; left: 155px; top: 168px;
+      font-size: 16pt; font-weight: 400;
+      letter-spacing: 3pt; text-transform: uppercase;
+      color: var(--c-accent); opacity: 0.72;
+      max-width: 540px; line-height: 1.5;
+    }
+    .hero {
+      position: absolute; left: 155px; top: 300px;
+      font-size: 58pt; font-weight: 900; line-height: 1.15;
+      color: var(--c-text);
+      max-width: 545px;
+      letter-spacing: -0.5pt;
+    }
+    .hero .sub { font-size: 30pt; font-weight: 700; color: var(--c-mid); letter-spacing: 2pt; }
+    .summary {
+      position: absolute; left: 155px; top: 585px;
+      font-size: 16.5pt; font-weight: 400; line-height: 1.6;
+      color: var(--c-text); opacity: 0.85;
+      max-width: 470px;
+    }
+    .meta {
+      position: absolute; left: 155px; top: 875px;
+      font-size: 17pt; font-weight: 400; line-height: 1.55;
+      color: var(--c-text);
+    }
+    .meta .m2 { color: var(--c-muted); font-size: 15pt; }
+  </style>
+</head>
+<body>
+  <div class="cover">
+    <div class="layer1"></div>
+    <div class="layer2"><div class="anchor-line"></div></div>
+    <div class="layer3">
+      <div class="kicker">Phase 6 &middot; Deep Production Audit<br>Final Report</div>
+      <div class="hero">PRAVEEN<br>GARMENTS<br><span class="sub">POS SYSTEM</span></div>
+      <div class="summary">
+        End-to-end validation of the billing, POS and inventory system:
+        353 automated checks green across the full migration chain
+        0001&ndash;0014, the complete scan-to-stock billing chain verified
+        with row-level evidence, and an honest production-readiness
+        verdict with every limitation stated.
+      </div>
+      <div class="meta">
+        Final Report &middot; September 2026<br>
+        <span class="m2">Private deployment<br>Supabase PostgreSQL &middot; 14 migrations live</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

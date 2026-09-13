@@ -178,3 +178,21 @@ Work Log:
 Stage Summary:
 - Sales report fixed; one user action remains: apply 0013_sales_report_payment_status.sql in the Supabase SQL editor (after 0012) to enable the payment-status filter — the page itself already works without it
 - 0001–0012 untouched (0013 generated from the 0012 file text; only additions)
+
+---
+Task ID: 9
+Agent: main (Super Z)
+Task: User applied 0014 + asked "what's next" + workspace lost code/preview views -> recover environment, re-verify 0014 chain, deliver the Phase 6 FINAL report
+
+Work Log:
+- Sandbox had been RESET again (fresh git init, no code, no node_modules, no .env.local) -> explained the missing code/preview views; recovered the full repo from GitHub (clone via one-off tokenized URL, token never stored; origin sanitized to clean URL; HEAD = 0c02ea1 Phase 6 audit commit)
+- Rebuilt environment: .env.local recreated (anon key verified live; service key from prior sessions now returns "Invalid API key" -> rotated; flagged to user, browser flows unaffected, only /api/admin user-management needs the new key), bun install (845 pkgs), dev server up on :3000 with /api/health ok + supabaseReachable true -> PREVIEW VIEW RESTORED
+- Re-verified the recovered code equals the audited code: pgtest fresh cluster, full chain 0001->0014 applied 14/14 clean; audit suites re-run in canonical order: audit1 73/73, audit2 52/52, audit3 48/48, test-0014 12/12 (=185/185); regressions 0011 27/27, 0012 116/116, 0013 25/25 (=168/168) -> 353/353 identical to the original audit run (boot.ts needed PGPASSWORD=postgres on this fresh cluster)
+- Cloud 0014 status: user confirmed applied; anon-role probe shows payment_report exists + permission-gated exactly as 0014 specifies; service-key re-read of deployed bodies blocked by the rotated key -> operator checklist item added (visual 2-min check on Reports > Payments "Exchange collections" + Reports > Cash "Cash exchange in")
+- FINAL DELIVERABLE: Praveen-Garments-Phase6-Final-Audit-Report.pdf (18 pages, A4) via pdf skill Report route: cascade palette, Template 01 HUD cover (html2poster.js 794px, cover_validate + poster_validate PASS), TocDocTemplate+multiBuild auto TOC, 20 chapters (verdict, evidence base, architecture/billing chain, migration inventory, 32-route page matrix, identifier/scan, stock/concurrency, payments+0014, returns/exchanges, dashboard/EOD, security/RLS, DB integrity, performance/scale, hardware HONEST status, browser/console, workspace recovery, P0-P3 findings register F-01..F-09, test matrix, operator checklist, PRODUCTION READY sign-off); post-gates ALL PASS (pdf_qa 13/13, font.check 0 issues, toc.check clean, pages.clean none, meta branded); cover HTML source kept in scripts/ + download/
+- Verdict recorded: PRODUCTION READY (honest caveats: hardware/mobile NOT TESTED, 1-crore design-verified at 50k load, service key + visual 0014 check on owner checklist)
+
+Stage Summary:
+- Workspace fully restored: code view + preview live, all tests green on recovered state
+- 0014 verified locally end-to-end + cloud deployment confirmed by user; service-key rotation documented (2-min fix in checklist)
+- Phase 6 CLOSED per its own plan: audit -> fix -> verify -> report -> STOP; final report PDF + cover HTML source committed; no further phase started
