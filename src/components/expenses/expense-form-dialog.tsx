@@ -19,6 +19,13 @@ import { createClient } from '@/lib/supabase/client'
 import { logError } from '@/lib/errors'
 import type { ExpenseCategory } from '@/types/database'
 
+/**
+ * Radix Select forbids SelectItem value="" (it throws — empty string is reserved
+ * for clearing the selection). The "whole business" (no branch) choice uses this
+ * sentinel; it maps back to '' in onValueChange.
+ */
+const NO_LOCATION_VALUE = '__none__'
+
 interface ExpenseDraft {
   category_id: string
   description: string
@@ -214,12 +221,15 @@ export function ExpenseFormDialog({
             </div>
             <div className="grid gap-2">
               <Label>Branch / location</Label>
-              <Select value={form.location_id} onValueChange={(v) => setForm((f) => ({ ...f, location_id: v }))}>
+              <Select
+                value={form.location_id || NO_LOCATION_VALUE}
+                onValueChange={(v) => setForm((f) => ({ ...f, location_id: v === NO_LOCATION_VALUE ? '' : v }))}
+              >
                 <SelectTrigger aria-label="Branch" className="w-full min-w-0">
                   <SelectValue placeholder="Whole business" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Whole business</SelectItem>
+                  <SelectItem value={NO_LOCATION_VALUE}>Whole business</SelectItem>
                   {locations.map((l) => (
                     <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
                   ))}

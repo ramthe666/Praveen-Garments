@@ -1,0 +1,83 @@
+CONSOLE-ERROR>> 819 |         context.onValueChange(value);
+820 |         context.onOpenChange(false);
+821 |       }
+822 |     };
+823 |     if (value === "") {
+824 |       throw new Error(
+                      ^
+error: A <Select.Item /> must have a value prop that is not an empty string. This is because the Select value can be set to an empty string to clear the selection and show the placeholder.
+      at SelectItem (/home/z/my-project/node_modules/@radix-ui/react-select/dist/index.mjs:824:17)
+      at react_stack_bottom_frame (/home/z/my-project/node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (/home/z/my-project/node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateForwardRef (/home/z/my-project/node_modules/react-dom/cjs/react-dom-client.development.js:9724:19)
+      at runWithFiberInDEV (/home/z/my-project/node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (/home/z/my-project/node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (/home/z/my-project/node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (/home/z/my-project/node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (/home/z/my-project/node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performSyncWorkOnRoot (/home/z/my-project/node_modules/react-dom/cjs/react-dom-client.development.js:18972:7)
+
+
+The above error occurred in the <SelectItem> component.
+
+React will try to recreate this component tree from scratch using the error boundary you provided, TestErrorBoundary.
+
+CONSOLE-ERROR>> 819 |         context.onValueChange(value);
+820 |         context.onOpenChange(false);
+821 |       }
+822 |     };
+823 |     if (value === "") {
+824 |       throw new Error(
+                      ^
+error: A <Select.Item /> must have a value prop that is not an empty string. This is because the Select value can be set to an empty string to clear the selection and show the placeholder.
+      at SelectItem (/home/z/my-project/node_modules/@radix-ui/react-select/dist/index.mjs:824:17)
+      at react_stack_bottom_frame (/home/z/my-project/node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (/home/z/my-project/node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateForwardRef (/home/z/my-project/node_modules/react-dom/cjs/react-dom-client.development.js:9724:19)
+      at runWithFiberInDEV (/home/z/my-project/node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (/home/z/my-project/node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (/home/z/my-project/node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (/home/z/my-project/node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (/home/z/my-project/node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performSyncWorkOnRoot (/home/z/my-project/node_modules/react-dom/cjs/react-dom-client.development.js:18972:7)
+
+
+The above error occurred in the <SelectItem> component.
+
+React will try to recreate this component tree from scratch using the error boundary you provided, TestErrorBoundary.
+
+CONSOLE-ERROR>> 819 |         context.onValueChange(value);
+820 |         context.onOpenChange(false);
+821 |       }
+822 |     };
+823 |     if (value === "") {
+824 |       throw new Error(
+                      ^
+error: A <Select.Item /> must have a value prop that is not an empty string. This is because the Select value can be set to an empty string to clear the selection and show the placeholder.
+      at SelectItem (/home/z/my-project/node_modules/@radix-ui/react-select/dist/index.mjs:824:17)
+      at react_stack_bottom_frame (/home/z/my-project/node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (/home/z/my-project/node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateForwardRef (/home/z/my-project/node_modules/react-dom/cjs/react-dom-client.development.js:9724:19)
+      at runWithFiberInDEV (/home/z/my-project/node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (/home/z/my-project/node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (/home/z/my-project/node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (/home/z/my-project/node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (/home/z/my-project/node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performSyncWorkOnRoot (/home/z/my-project/node_modules/react-dom/cjs/react-dom-client.development.js:18972:7)
+
+
+The above error occurred in the <SelectItem> component.
+
+React will try to recreate this component tree from scratch using the error boundary you provided, TestErrorBoundary.
+
+
+===== P7 SelectItem harness — mode: repro =====
+PASS  [A] minimal Select + SelectItem value="" (mechanism)
+        CRASHED as expected — boundary caught the Radix throw on content mount
+PASS  [B] ExpenseFormDialog — open Branch dropdown ("Something went wrong")
+        CRASHED as expected (at dialog mount) — page replaced by "Something went wrong"
+PASS  [C] InvoiceFormDialog — open Link purchase order dropdown
+        CRASHED as expected (at dialog mount) — page replaced by "Something went wrong"
+
+console.error calls: 3 (React error logging while reproducing)
+RESULT: 3/3 REPRODUCED

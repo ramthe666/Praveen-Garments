@@ -43,6 +43,13 @@ import { TableSkeleton } from '@/components/shared/loading'
 import { ActiveBadge } from '@/components/shared/status-badge'
 import type { Branch, StockLocation } from '@/types/database'
 
+/**
+ * Radix Select forbids SelectItem value="" (it throws — empty string is reserved
+ * for clearing the selection). The optional "no branch" choice uses this sentinel;
+ * FormData handlers map it back to null.
+ */
+const NO_BRANCH_VALUE = '__none__'
+
 /** Stock locations tab: stores + warehouses where balances are tracked. */
 export function LocationsTab({
   locations,
@@ -92,7 +99,7 @@ export function LocationsTab({
         name,
         code,
         location_type: type,
-        branch_id: branchId || null,
+        branch_id: branchId === NO_BRANCH_VALUE ? null : (branchId || null),
         address: address || null,
       })
       if (!result.ok) {
@@ -126,7 +133,7 @@ export function LocationsTab({
         name,
         code,
         location_type: type,
-        branch_id: branchId || null,
+        branch_id: branchId === NO_BRANCH_VALUE ? null : (branchId || null),
         address: address || null,
       })
       if (!result.ok) {
@@ -180,12 +187,12 @@ export function LocationsTab({
         </div>
         <div className="space-y-2">
           <Label htmlFor="loc-branch">Linked branch (optional)</Label>
-          <Select name="branch_id" defaultValue={loc?.branch_id ?? ''}>
+          <Select name="branch_id" defaultValue={loc?.branch_id ?? NO_BRANCH_VALUE}>
             <SelectTrigger id="loc-branch">
               <SelectValue placeholder="No branch" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">No branch</SelectItem>
+              <SelectItem value={NO_BRANCH_VALUE}>No branch</SelectItem>
               {branches.map((b) => (
                 <SelectItem key={b.id} value={b.id}>
                   {b.name}

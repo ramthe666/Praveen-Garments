@@ -22,6 +22,12 @@ import { logError } from '@/lib/errors'
 import { VariantPicker, type VariantOption } from './variant-picker'
 import type { LocationOption, SupplierOption } from './po-form-dialog'
 
+/**
+ * Radix Select forbids SelectItem value="" (it throws — empty string is reserved
+ * for clearing the selection). The "no order" choice uses this sentinel instead.
+ */
+const NO_ORDER_VALUE = '__none__'
+
 interface InvoiceItemDraft {
   variant_id: string
   po_item_id?: string
@@ -288,12 +294,15 @@ export function InvoiceFormDialog({
             </div>
             <div className="grid gap-2">
               <Label>Link purchase order</Label>
-              <Select value={poId} onValueChange={loadPOItems}>
+              <Select
+                value={poId || NO_ORDER_VALUE}
+                onValueChange={(v) => void loadPOItems(v === NO_ORDER_VALUE ? '' : v)}
+              >
                 <SelectTrigger aria-label="Purchase order" className="w-full min-w-0">
                   <SelectValue placeholder="No order (direct)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No order (direct)</SelectItem>
+                  <SelectItem value={NO_ORDER_VALUE}>No order (direct)</SelectItem>
                   {availableOrders.map((o) => (
                     <SelectItem key={o.id} value={o.id}>
                       {o.po_number} · {o.supplier_name}
