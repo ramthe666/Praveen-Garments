@@ -9,6 +9,7 @@ import { FilterSearch, FilterSelect, ReportError, ReportSetupNotice, ReportShell
 import { ReportTable } from '@/components/reports/report-table'
 import { useReportQuery } from '@/components/reports/use-report'
 import { downloadCsv, resolvePeriod } from '@/lib/reports/shared'
+import { istDayStart, istNextDayStart } from '@/lib/reports/period'
 import { money, num, timeCell, MOVEMENT_TYPE_OPTIONS, STOCK_CLASS_OPTIONS, STOCK_STATUS_OPTIONS } from '@/components/reports/config-helpers'
 
 type Row = Record<string, unknown>
@@ -186,8 +187,10 @@ export function MovementReportView() {
 
   const args = React.useMemo(
     () => ({
-      p_date_from: applied.from ? new Date(`${applied.from}T00:00:00+05:30`).toISOString() : null,
-      p_date_to: applied.to ? new Date(`${applied.to}T00:00:00+05:30`).toISOString() : null,
+      // Whole-store-local-day semantics: [from 00:00 IST, to+1 00:00 IST) —
+      // the To date is fully INCLUDED (was midnight-exclusive before Phase 8).
+      p_date_from: applied.from ? istDayStart(applied.from).toISOString() : null,
+      p_date_to: applied.to ? istNextDayStart(applied.to).toISOString() : null,
       p_search: applied.search?.trim() || null,
       p_movement_type: applied.type || null,
       p_limit: 25,

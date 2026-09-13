@@ -108,6 +108,10 @@ export function ReportError({ message, onRetry }: { message: string; onRetry?: (
 /**
  * Filter bar with date-range presets + custom dates + arbitrary extra
  * controls. Draft state is local; queries only re-run on Apply.
+ *
+ * Preset selection applies period + from + to ATOMICALLY (one patch) so the
+ * Select never flips to "Custom" behind the cashier's back — Phase 8 Part 19
+ * fix. Editing a date by hand still switches the period to Custom.
  */
 export function ReportFilterBar({
   period,
@@ -140,11 +144,13 @@ export function ReportFilterBar({
 
   function handlePreset(p: PeriodPreset) {
     const r = resolvePeriod(p)
-    onPeriodChange(p)
+    // Dates first, period LAST — the per-field handlers force "custom" on
+    // date changes, so the preset must win the final state atomically.
     if (r) {
       onFromChange(r.from)
       onToChange(r.to)
     }
+    onPeriodChange(p)
   }
 
   return (
@@ -200,7 +206,10 @@ export function ReportFilterBar({
         </div>
       </div>
       {children ? <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{children}</div> : null}
-      {note ? <p className="mt-2 text-xs text-muted-foreground">{note}</p> : null}
+      <p className="mt-2 text-xs text-muted-foreground">
+        {note ? `${note} ` : ''}
+        {hideDates ? null : 'The To date is inclusive — the whole store-local day is included.'}
+      </p>
     </div>
   )
 }

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { createClient } from '@/lib/supabase/client'
+import { storeToday, ymd, istDayStart } from '@/lib/reports/period'
 import { formatDate, formatMoney } from '@/lib/catalog/constants'
 import { logError } from '@/lib/errors'
 
@@ -53,8 +54,10 @@ export function CustomerStatementDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const supabase = React.useMemo(() => createClient(), [])
-  const today = new Date().toISOString().slice(0, 10)
-  const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
+  // Store-local (IST) calendar dates — UTC-derived "today" would show
+  // yesterday before 05:30 IST (Phase 8 Part 19 fix).
+  const today = storeToday()
+  const monthAgo = ymd(new Date(istDayStart(today).getTime() - 30 * 86_400_000))
   const [from, setFrom] = React.useState(monthAgo)
   const [to, setTo] = React.useState(today)
   const [statement, setStatement] = React.useState<Statement | null>(null)

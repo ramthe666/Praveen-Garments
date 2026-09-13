@@ -40,6 +40,7 @@ import { CheckoutDialog } from '@/components/pos/checkout-dialog'
 import { HeldBillsDialog } from '@/components/pos/held-bills-dialog'
 import { QrScanDialog } from '@/components/pos/qr-scan-dialog'
 import { SaleSuccess } from '@/components/pos/sale-success'
+import { ScannerStatusBox, probeCameraCapabilities, type CameraScanStatus, type LastScan } from '@/components/pos/scanner-status'
 import { formatMoney } from '@/lib/catalog/constants'
 
 const CART_STORAGE_KEY = 'pg_pos_cart_v1'
@@ -81,6 +82,14 @@ export function PosView() {
   const [heldOpen, setHeldOpen] = React.useState(false)
   const [qrOpen, setQrOpen] = React.useState(false)
   const [selectedRow, setSelectedRow] = React.useState<number | null>(null)
+
+  // ---- scanning-device status (Phase 8: truthful hardware reporting) -----
+  const [lastScan, setLastScan] = React.useState<LastScan | null>(null)
+  const [scannerFocused, setScannerFocused] = React.useState(false)
+  const [cameraStatus, setCameraStatus] = React.useState<CameraScanStatus>('not_opened')
+  const [cameraCapabilities] = React.useState(() =>
+    typeof window === 'undefined' ? { canOpen: false, insecureContext: false, decoder: 'software' as const } : probeCameraCapabilities(),
+  )
 
   const scanRef = React.useRef<HTMLInputElement>(null)
   const searchRef = React.useRef<HTMLInputElement>(null)
@@ -271,6 +280,7 @@ export function PosView() {
     async (value: string) => {
       const v = value.trim()
       if (!v) return
+      setLastScan({ at: Date.now(), code: v })
       setScanning(true)
       let fallbackToSearch = false
       try {
@@ -622,6 +632,8 @@ export function PosView() {
               autoFocus
               value={scanValue}
               onChange={(e) => setScanValue(e.target.value)}
+              onFocus={() => setScannerFocused(true)}
+              onBlur={() => setScannerFocused(false)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
@@ -637,6 +649,15 @@ export function PosView() {
               USB/Bluetooth scanners type the code and press Enter automatically. Repeated scans increase the quantity.
             </p>
           </div>
+
+          {/* truthful device status (never claims hardware links the browser
+              cannot see — see scanner-status.tsx) */}
+          <ScannerStatusBox
+            lastScan={lastScan}
+            scannerFocused={scannerFocused}
+            cameraStatus={cameraStatus}
+            cameraDecoder={cameraCapabilities.decoder}
+          />
 
           {/* product search */}
           <div className="shadow-soft rounded-2xl border border-border/70 bg-card p-4">
@@ -1015,14 +1036,20 @@ export function PosView() {
 
       <CustomerDialog
         open={customerOpen}
-        onOpenChange={setCustomerOpen}
+        onOpenChange={(next) => {
+          setCustomerOpen(next)
+          if (!next) requestAnimationFrame(() => scanRef.current?.focus())
+        }}
         selected={customer}
         onSelect={setCustomer}
         canCreate={hasPermission('manage_customers')}
       />
       <CheckoutDialog
         open={checkoutOpen}
-        onOpenChange={setCheckoutOpen}
+        onOpenChange={(next) => {
+          setCheckoutOpen(next)
+          if (!next) requestAnimationFrame(() => scanRef.current?.focus())
+        }}
         items={cart}
         summary={bill}
         billDiscountType={billDiscountType}
@@ -1036,14 +1063,25 @@ export function PosView() {
           sessionStorage.removeItem(CART_STORAGE_KEY)
         }}
       />
-      <HeldBillsDialog open={heldOpen} onOpenChange={setHeldOpen} onResume={(cartData) => void resumeCart(cartData)} />
+      <HeldBillsDialog
+        open={heldOpen}
+        onOpenChange={(next) => {
+          setHeldOpen(next)
+          if (!next) requestAnimationFrame(() => scanRef.current?.focus())
+        }}
+        onResume={(cartData) => void resumeCart(cartData)}
+      />
       <QrScanDialog
         open={qrOpen}
-        onOpenChange={setQrOpen}
+        onOpenChange={(next) => {
+          setQrOpen(next)
+          if (!next) requestAnimationFrame(() => scanRef.current?.focus())
+        }}
         onIdentifier={(value) => {
           setQrOpen(false)
           void resolveAndAdd(value)
         }}
+        onStatusChange={setCameraStatus}
       />
     </div>
   )

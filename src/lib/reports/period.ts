@@ -63,6 +63,32 @@ export function resolvePeriod(preset: PeriodPreset, timeZone = STORE_TZ): { from
 
 export function periodLabel(preset: PeriodPreset, from: string | null, to: string | null): string {
   if (preset === 'all') return 'All time'
-  if (from && to) return from === to ? from : `${from} → ${to}`
+  if (from && to) return from === to ? inDate(from) : `${inDate(from)} → ${inDate(to)}`
   return 'Custom range'
+}
+
+/** Indian display format (dd-mm-yyyy) for a ymd string — unambiguous for
+ *  store staff and matches the en-IN date inputs. */
+export function inDate(ymd: string): string {
+  const [y, m, d] = ymd.split('-')
+  if (!y || !m || !d) return ymd
+  return `${d}-${m}-${y}`
+}
+
+/** UTC instant of store-local midnight for a ymd string (default IST). */
+export function istDayStart(ymd: string, timeZone = STORE_TZ): Date {
+  return new Date(`${ymd}T00:00:00${tzOffsetIso(timeZone)}`)
+}
+
+/** UTC instant of the midnight AFTER the given store-local day — the exact
+ *  inclusive end for "whole day" semantics when compared with < or <=. */
+export function istNextDayStart(ymd: string, timeZone = STORE_TZ): Date {
+  return new Date(istDayStart(ymd, timeZone).getTime() + 86_400_000)
+}
+
+function tzOffsetIso(timeZone: string): string {
+  // Only the two real deployment zones need exact offsets; anything else
+  // falls back to IST (+05:30).
+  if (timeZone === 'UTC') return 'Z'
+  return '+05:30'
 }

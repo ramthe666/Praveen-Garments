@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { storeToday } from '@/lib/reports/period'
 import { toast } from 'sonner'
 import { IndianRupee, Paperclip, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -57,14 +58,14 @@ export function ExpenseFormDialog({
   const [methods, setMethods] = React.useState<string[]>([])
   const [locations, setLocations] = React.useState<Array<{ id: string; name: string }>>([])
   const [form, setForm] = React.useState<ExpenseDraft>({
-    category_id: '', description: '', amount: '', method: '', expense_date: new Date().toISOString().slice(0, 10), location_id: '', notes: '', file: null,
+    category_id: '', description: '', amount: '', method: '', expense_date: storeToday(), location_id: '', notes: '', file: null,
   })
   const [saving, setSaving] = React.useState(false)
 
   React.useEffect(() => {
     if (!open) return
     setForm({
-      category_id: '', description: '', amount: '', method: '', expense_date: new Date().toISOString().slice(0, 10), location_id: '', notes: '', file: null,
+      category_id: '', description: '', amount: '', method: '', expense_date: storeToday(), location_id: '', notes: '', file: null,
     })
     void (async () => {
       const { data: cfg, error } = await supabase.rpc('get_pos_config')

@@ -28,6 +28,7 @@ import { ErrorState } from '@/components/shared/error-state'
 import { TableSkeleton } from '@/components/shared/loading'
 import { Combobox } from '@/components/shared/combobox'
 import { MOVEMENT_TYPES, formatDateTime, movementTypeLabel, useDebounced } from '@/lib/catalog/constants'
+import { istDayStart, istNextDayStart } from '@/lib/reports/period'
 import type { StockHistoryPageResult, StockHistoryRow, StockLocation } from '@/types/database'
 
 const PAGE_SIZE = 25
@@ -79,9 +80,10 @@ export function StockHistory({
         p_after_created: cursor?.created_at ?? null,
         p_after_id: cursor?.id ?? null,
         // Pin the day boundaries to the store timezone (IST) so filters mean
-        // the same thing on every device — mirrors the movements report.
-        p_date_from: dateFrom ? new Date(`${dateFrom}T00:00:00+05:30`).toISOString() : null,
-        p_date_to: dateTo ? new Date(`${dateTo}T23:59:59+05:30`).toISOString() : null,
+        // the same thing on every device — whole-day INCLUSIVE To date
+        // (to+1 midnight, exact) — mirrors the movements report.
+        p_date_from: dateFrom ? istDayStart(dateFrom).toISOString() : null,
+        p_date_to: dateTo ? istNextDayStart(dateTo).toISOString() : null,
         p_search: debouncedSearch || null,
         p_movement_type: movementType === 'all' ? null : movementType,
         p_location_id: location === 'all' ? null : location,

@@ -220,3 +220,26 @@ Stage Summary:
 - Both reported P0 bugs fixed at root cause with repro/verify evidence; 353/353 regression green; build clean; two official PDFs delivered to download/
 - STOP per the brief: no new feature phase started; no migration created (none needed — fix is frontend-only)
 - Open owner items: re-share screenshot ZIP (Part 1 BLOCKED), paste new service key, visual re-check of 2 dialogs, run UAT checklist with physical scanner
+
+---
+Task ID: 11
+Agent: main (Super Z)
+Task: Phase 8 — deep production integration audit + POS/scanner validation + multi-device design + complete business workflow testing (55-part brief; report IN CHAT; push to GitHub; then STOP)
+
+Work Log:
+- Part 1 screenshots: upload/ empty AGAIN (3rd attempt) — BLOCKED, user asked to re-share
+- DATE BUG root-caused at THREE layers: (D-A) movement report To-date was midnight-exclusive (whole To day missing) + stock-history 23:59:59 convention; (D-B) preset selection flipped the Period Select to "Custom" (date handlers forced custom AFTER preset); (D-C) 8 page/statement RPCs anchored date filters at session tz (UTC) while 0012 reports anchor IST — same filter could disagree between page and report for 00:00–05:29 IST records
+- Migration 0015_phase8_ist_date_boundaries.sql (NEW, script-generated from verbatim extracts, additive, idempotent, same signatures/grants, zero table changes): sales_page, purchase_orders_page, purchase_invoices_page, purchase_returns_page, sales_returns_page, exchanges_page, payments_page, customer_statement → store-tz boundaries (company_settings.timezone, IST fallback); diff-verified surgical (2 decl + 2 boundary lines per function)
+- Frontend date fixes: report-shell handlePreset reordered (dates first, period last — atomic), inclusive-To hint line; period.ts +istDayStart/istNextDayStart/inDate (dd-mm-yyyy); movement report + stock-history now exact [from 00:00 IST, to+1 00:00 IST); statement/expense dialogs default storeToday() (UTC "today" showed yesterday before 05:30 IST)
+- Parts 5/6/47: scanner-status.tsx — truthful POS device box: Scanner input Ready/Waiting, Keyboard/HID, "hardware connection status not detectable by the browser", last scan time+masked code, camera states incl. denied/no_camera/insecure(HTTPS)/not_opened, decoder native/software; wired into pos-view with lastScan tracking
+- Parts 9/10: qr-scan-dialog.tsx upgraded — jsQR software fallback (works in Firefox/Safari/iOS which lack BarcodeDetector), honest error taxonomy (denied / no camera / needs HTTPS), duplicate-scan guard, retry button, flash+vibrate feedback, downscale+200ms throttle; POS dialogs now refocus the scanner input on close
+- Verification: test-0015 58/58 (incl. session-tz UTC==Kolkata identity, page/report agreement, month/year boundaries, form-style UTC-midnight invoice dates, idempotent re-apply, anon denial); full canonical regression on 0015 state: audit1 73/73, audit2 52/52, audit3 48/48, 0014 12/12, 0011 27/27, 0012 116/116, 0013 25/25 = 353/353 IDENTICAL to Phase 6/7; QR software decode 6/6 (5 payloads + noise negative, incl. downscale); jsdom UI-logic 33/33 (preset wiring regression test, manual date edit, hint, ScannerStatusBox truthfulness, capability probe)
+- tsc src/ = 0 errors; eslint changed files = 0 problems; production build PASSES; client bundle scan: no service-role key, no service_role string, only sb_publishable anon key
+- Browser smoke (agent-browser): login renders, 0 page/console errors, no overflow at 320/390px, /pos redirects to login with next param; screenshot p8-login-smoke.png. NOTE: hit the known Turbopack pitfall (rm .next while dev running → corrupted cache → Internal Server Error) — resolved by restart; production build unaffected
+- Authenticated cloud E2E remains BLOCKED: service key rotated & not replaced (admin user creation impossible; public signup disabled — verified signup_disabled). Phase 6 27-page authenticated sweep stands as last full browser evidence
+- Harness note: this sandbox reaps background processes between tool calls → scripts/run-with-db.sh boots+runs+stops the embedded pg per invocation (data persists); dev server must be started with the preview/system supervisor
+
+Stage Summary:
+- Phase 8 fixes: date filter at all 3 layers (0015 migration + UI wiring + IST defaults), truthful scanner status box, camera QR fallback chain, focus management — all with DB/UI-level test evidence (450 green checks this phase)
+- Verdict: PRODUCTION READY with honest caveats (0015 to be applied by owner in Supabase SQL editor; physical hardware NOT TESTED; service key + screenshot ZIP open items)
+- Commit + push attempted; token state at push time recorded in the final report

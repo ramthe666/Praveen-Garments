@@ -22,6 +22,7 @@ const MIGRATIONS = [
   '../supabase/migrations/0012_phase5_reporting.sql',
   '../supabase/migrations/0013_sales_report_payment_status.sql',
   '../supabase/migrations/0014_phase6_report_exchange_cash.sql',
+  '../supabase/migrations/0015_phase8_ist_date_boundaries.sql',
 ]
 
 const c = new Client(CONN)
