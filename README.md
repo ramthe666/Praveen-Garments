@@ -336,3 +336,53 @@ Local harness (embedded Postgres 18) with 50,000 sales / 150,000 items /
 0012-composited indexes (see `pgtest/scripts/local/perf-0012.ts`).
 Functional + permission + ledger-integrity + concurrency coverage lives in
 `pgtest/scripts/local/test-0012.ts` (116 checks).
+
+## Phase 8 — deep production integration audit notes
+
+**Migration `0015_phase8_ist_date_boundaries.sql`** (additive — apply after
+0014 in the Supabase SQL editor; idempotent) aligns every page/list RPC and
+`customer_statement` to the same store-timezone day boundaries the 0012
+report RPCs already use: `sales_page`, `purchase_orders_page`,
+`purchase_invoices_page`, `purchase_returns_page`, `sales_returns_page`,
+`exchanges_page`, `payments_page`. Before 0015 these functions anchored
+`date` params at the session timezone (UTC on Supabase), so records created
+between 00:00 and 05:29 IST could appear on a report but not the matching
+page filter. Filter semantics are unchanged: `[from 00:00, to+1 00:00)` —
+the To date includes the whole store-local day, everywhere.
+
+### Date-filter behavior (Phase 8 contract)
+
+- Every module's To date is inclusive of the entire store-local day.
+- Day boundaries are `company_settings.timezone` (default Asia/Kolkata),
+  independent of the database session timezone (verified: identical results
+  under UTC and Kolkata sessions).
+- Report period presets apply dates + period atomically; editing a date by
+  hand switches the preset to Custom. Report subtitles and statement ranges
+  display Indian `dd-mm-yyyy`.
+- "Today" defaults use the store-local calendar date (expense form,
+  customer statement range).
+
+### POS scanning (Phase 8)
+
+- **Scanner status box** on `/pos` reports only what the browser can truthfully
+  determine: scanner-input ready/waiting state, last scan time + masked code,
+  Keyboard/HID input, and an explicit note that physical USB/Bluetooth link
+  status is not detectable from a web page. Camera row reports runtime states
+  (not opened / scanning / permission denied / no camera / needs HTTPS) and
+  the active decoder.
+- **Camera QR now works in every modern browser**: BarcodeDetector where
+  available, software decoding via jsQR otherwise (Firefox, Safari, iOS
+  Safari). Software decode pipeline verified by round-trip tests; physical
+  camera use remains a user-side UAT item.
+- Dialogs (customer / checkout / held bills / QR) restore focus to the
+  scanner input when they close, so a HID scanner keeps working.
+
+### Phase 8 evidence
+
+`pgtest/scripts/local/test-0015.ts` (58 checks: boundary matrix incl.
+11-09→12-09, month/year edges, session-timezone identity, page/report
+agreement, statement ledger, idempotency, anon denial) + full canonical
+regression on the 0015 state (audit1 73, audit2 52, audit3 48, 0014 12,
+0011 27, 0012 116, 0013 25 — identical to previous phases), QR software
+decode suite, and a jsdom UI-logic suite for the filter wiring and scanner
+status truthfulness. See `worklog.md` Task 11.
