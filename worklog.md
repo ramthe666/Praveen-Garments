@@ -280,3 +280,22 @@ Work Log:
 
 Stage Summary:
 - 221/221 DB/API workflow checks PASS; P9-BUG-1 fixed code-only; P9-BUG-2 (PI tax double-count) reported with migration proposal; verdict NOT PRODUCTION READY until P9-BUG-2 decision + service-key paste + owner UAT with real hardware.
+---
+Task ID: 14
+Agent: main (Super Z)
+Task: Phase 10 — user provided fresh credentials (service key, owner login, GitHub token) + 3 requests: (1) new "Look a trend" visualization report under Reports, (2) cancelled-bill clarity in payment history & Sales & revenue reports, (3) push code. No changes to existing migrations/logics (0017 reserved for the purchase-tax fix).
+
+Work Log:
+- Environment: repo clean at eb07cb3 (ahead 1, push pending), dev server healthy; found and FIXED a casing typo in .env.local service key (Gohry→GOhry) — the user-provided key verified VALID against the cloud REST API (first working service key since Phase 6 rotation)
+- Root-cause of the cancelled-bill confusion (DB audit): ALL money/report RPCs already handle cancellation correctly — payment_report + cash_report (0014) filter s.status='COMPLETED' on till payments; sales_report (0013) defaults p_status='COMPLETED'; product_sales/catalog/gst/profit reports (0012) all filter COMPLETED; cancel_sale (0008) restores stock + preserves the financial record by design. The gaps were PURELY UI: payments_page rows had no cancelled indicator, and the Sales report table had no Status column
+- Fix 1 (payment history): payments-view.tsx now batch-looks-up sale status by sale_number for sale_payment rows (client-side, RLS-safe) and renders a "Bill cancelled" badge + struck-through amount + muted row + explainer subtitle line
+- Fix 2 (sales report): new statusCell helper + Status column (Completed/CANCELLED badges) + filter-bar note that "All statuses" includes cancelled bills
+- New feature ("Look a trend", first card in Reports): trend-report-view.tsx — KPI strip (gross, bills, avg, money in, dues, refunds, cancelled count), plain-language "What happened in this period" highlights card, daily sales area chart, bills-per-day bars, payment-mix donut, category-share donut, top-products horizontal bars, top-customers bar list; built ONLY on existing RPCs (sales_report COMPLETED + CANCELLED count, payment_report, catalog_performance_report, product_sales_report) — zero DB changes; IST day bucketing matches 0015 boundaries; gap-filled daily series (≤800d) with sparse fallback; CSV export of the daily series; registry entry slug 'trend', group Sales & revenue, permission view_reports
+- Verification: tsc src/ 0 errors; eslint changed files 0 problems; production build PASSES; 23/23 helper unit tests (scripts/p10-trend-helpers-test.ts: IST boundary 18:30Z, gap-fill, To-date inclusive, walk-in default, Indian k/L/Cr axis)
+- Cloud E2E as owner (praveen@praveengarments.com) on LIVE data via agent-browser: login OK; /payments shows INV-2026-000016's two split payments (UPI ₹100 + Cash ₹900) both badged "Bill cancelled"; /reports/sales shows Status column, Cancelled filter lists INV-16 with red badge; /reports/trend renders 5 charts + KPIs with real figures (₹11,491 gross, 9 bills, 7 cancelled), zero page/console errors, no horizontal overflow at 390px mobile; screenshots saved to download/p10-*.png
+- Commit a961d1f pushed via one-off tokenized URL (token never stored, origin stays clean); GitHub API confirms remote HEAD = a961d1f (Phase 9 + Phase 10 both landed)
+
+Stage Summary:
+- All 3 user requests delivered: trend visualization report built + cancelled-bill clarity fixed in both places + code pushed
+- Zero migrations touched (0017 still reserved for the P9-BUG-2 purchase-tax fix — owner decision pending)
+- Open items unchanged: purchase-tax fix (P9-BUG-2), UAT with physical scanner hardware
